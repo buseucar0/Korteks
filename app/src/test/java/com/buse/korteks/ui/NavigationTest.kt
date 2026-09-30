@@ -1,0 +1,69 @@
+package com.buse.korteks.ui
+
+import androidx.compose.ui.test.hasClickAction
+import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.junit4.createAndroidComposeRule
+import androidx.compose.ui.test.onFirst
+import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
+import com.buse.korteks.MainActivity
+import org.junit.Rule
+import org.junit.Test
+import org.junit.runner.RunWith
+import org.robolectric.RobolectricTestRunner
+import org.robolectric.annotation.Config
+
+/** Uygulamanın tamamı (MainActivity) açılır: menü → sekme → oyun → geri tuşu akışı. */
+@RunWith(RobolectricTestRunner::class)
+@Config(qualifiers = "w411dp-h891dp")
+class NavigationTest {
+
+    @get:Rule
+    val rule = createAndroidComposeRule<MainActivity>()
+
+    private val tabs = listOf("Dikkat", "Mantık", "Bellek", "Hız", "Uzamsal", "Planlama")
+
+    /**
+     * Geri tuşuna bas, sonra saati otomatiğe al. Oyun ekranından çıkınca sürekli çalışan sayaç da
+     * durduğu için otomatik saat güvenli. (Saat elle yönetilirken bazı ekran geçişleri tamamlanmıyor;
+     * bu test ortamının bir özelliği, uygulamanın hatası değil.)
+     */
+    private fun pressBack() {
+        rule.runOnUiThread { rule.activity.onBackPressedDispatcher.onBackPressed() }
+        rule.mainClock.autoAdvance = true
+        rule.waitForIdle()
+    }
+
+    @Test
+    fun `her sekme acilir ve ana menu butonuyla donulur`() {
+        for (tab in tabs) {
+            rule.onNodeWithText(tab).performClick()
+            rule.onNodeWithText("Bu görev nedir?").assertExists()
+            rule.onNodeWithText("← Ana menü").performClick()
+            rule.onNodeWithText("Korteks").assertExists()
+        }
+    }
+
+    @Test
+    fun `geri tusu once oyundan girise, sonra ana menuye doner`() {
+        for (tab in tabs) {
+            rule.onNodeWithText(tab).performClick()
+            rule.onNodeWithText("Bu görev nedir?").assertExists("sekme=$tab")
+
+            // İlk zorluk butonunu görünür yap (kaydırma bir animasyon: saat durmadan önce yapılmalı)
+            val firstDifficulty = rule.onAllNodes(hasText("·", substring = true) and hasClickAction()).onFirst()
+            firstDifficulty.performScrollTo()
+            // Oyun ekranlarında sürekli çalışan sayaç var: oyun sırasında saati elle yönet
+            rule.mainClock.autoAdvance = false
+            firstDifficulty.performClick()
+            rule.mainClock.advanceTimeBy(100)
+            rule.onNodeWithText("Bu görev nedir?").assertDoesNotExist() // oyundayız
+
+            pressBack()
+            rule.onNodeWithText("Bu görev nedir?").assertExists("sekme=$tab: oyundan girişe dönmeli")
+            pressBack()
+            rule.onNodeWithText("Korteks").assertExists("sekme=$tab: girişten ana menüye dönmeli")
+        }
+    }
+}

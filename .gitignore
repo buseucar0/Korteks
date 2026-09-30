@@ -1,0 +1,30 @@
+# Makineye özel (asla commit etme)
+local.properties
+
+# Gradle / build çıktıları
+.gradle/
+build/
+.kotlin/
+
+# IDE
+.idea/
+*.iml
+.vscode/
+
+# İşletim sistemi
+.DS_Store
+
+# Android
+*.apk
+*.aab
+captures/
+.externalNativeBuild/
+.cxx/
+
+# Paparazzi önizleme resimleri (./onizle.sh ile yeniden üretilir)
+app/src/test/snapshots/
+
+# Asistan notları (yerelde kalır, depoya girmez)
+CLAUDE.md
+AGENTS.md
+PROGRESS.md
