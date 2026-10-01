@@ -36,6 +36,7 @@ import androidx.compose.ui.unit.sp
 import com.buse.korteks.game.NBackDifficulty
 import com.buse.korteks.game.NBackResponse
 import com.buse.korteks.game.NBackTask
+import com.buse.korteks.game.GameReward
 import com.buse.korteks.game.TaskResult
 
 /** Uyaran her adımın başında bu kadar süre görünür, sonra kaybolur (hafızada tutulmalı). */
@@ -44,11 +45,15 @@ private const val STIMULUS_VISIBLE_MS = 1000L
 private sealed interface NBackPhase {
     data object Intro : NBackPhase
     data class Playing(val task: NBackTask) : NBackPhase
-    data class Finished(val task: NBackTask, val result: TaskResult) : NBackPhase
+    data class Finished(val task: NBackTask, val result: TaskResult, val reward: GameReward? = null) : NBackPhase
 }
 
+/**
+ * onGameFinished: oyun bittiği AN bir kez çağrılır (ilerleme kaydı). Dönen ödül sonuç ekranında gösterilir.
+ * Varsayılan { null }: önizleme ve testlerde kayıt yapılmaz.
+ */
 @Composable
-fun NBackScreen(onBack: () -> Unit) {
+fun NBackScreen(onBack: () -> Unit, onGameFinished: (TaskResult) -> GameReward? = { null }) {
     var phase by remember { mutableStateOf<NBackPhase>(NBackPhase.Intro) }
     // Tek geri tuşu dinleyicisi: oyun/sonuç ekranındaysa girişe, girişteyse ana menüye dön
     BackHandler { if (phase is NBackPhase.Intro) onBack() else phase = NBackPhase.Intro }
@@ -73,7 +78,7 @@ fun NBackScreen(onBack: () -> Unit) {
             onBack = onBack,
         )
         is NBackPhase.Playing -> key(p.task) {
-            NBackPlaying(p.task, onFinished = { phase = NBackPhase.Finished(p.task, it) })
+            NBackPlaying(p.task, onFinished = { phase = NBackPhase.Finished(p.task, it, onGameFinished(it)) })
         }
         is NBackPhase.Finished -> ResultScreen(
             header = "🧠 BELLEK · ${p.task.difficulty.title.uppercase()}",
@@ -85,6 +90,7 @@ fun NBackScreen(onBack: () -> Unit) {
             ),
             onReplay = { phase = NBackPhase.Playing(NBackTask(p.task.difficulty)) },
             onMenu = { phase = NBackPhase.Intro },
+            reward = p.reward,
         )
     }
 }

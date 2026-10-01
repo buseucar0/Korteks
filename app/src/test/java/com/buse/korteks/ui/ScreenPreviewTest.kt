@@ -9,11 +9,14 @@ import com.buse.korteks.game.CorsiDifficulty
 import com.buse.korteks.game.CorsiTask
 import com.buse.korteks.game.HanoiDifficulty
 import com.buse.korteks.game.HanoiMove
+import com.buse.korteks.game.GameReward
 import com.buse.korteks.game.HanoiTask
+import com.buse.korteks.game.LevelInfo
 import com.buse.korteks.game.MatrixDifficulty
 import com.buse.korteks.game.MatrixTask
 import com.buse.korteks.game.NBackDifficulty
 import com.buse.korteks.game.NBackTask
+import com.buse.korteks.game.PlayerProgress
 import com.buse.korteks.game.StroopDifficulty
 import com.buse.korteks.game.SymbolDigitDifficulty
 import com.buse.korteks.game.SymbolDigitTask
@@ -36,6 +39,23 @@ class ScreenPreviewTest {
 
     @Test
     fun anaMenu() = snap { HomeScreen(onOpen = {}) }
+
+    @Test
+    fun anaMenuIlerleme() = snap {
+        HomeScreen(onOpen = {}, levelInfo = LevelInfo(level = 3, xpIntoLevel = 120, xpForNextLevel = 200), streak = 4, longestStreak = 9)
+    }
+
+    @Test
+    fun sonucSeviyeAtlama() = snap {
+        ResultScreen(
+            header = "🧠 BELLEK · 2-BACK",
+            score = 1640,
+            stats = listOf("Doğruluk" to "%88", "İsabet" to "11/12", "Yanlış alarm" to "1"),
+            onReplay = {},
+            onMenu = {},
+            reward = GameReward(xpGained = 110, before = PlayerProgress(totalXp = 200), after = PlayerProgress(totalXp = 310)),
+        )
+    }
 
     @Test
     fun stroopGiris() = snap { StroopScreen(onBack = {}, vm = StroopViewModel()) }

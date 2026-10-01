@@ -25,6 +25,8 @@ import com.buse.korteks.game.NBackTask
 import com.buse.korteks.game.StroopDifficulty
 import com.buse.korteks.game.SymbolDigitDifficulty
 import com.buse.korteks.game.SymbolDigitTask
+import com.buse.korteks.game.GameReward
+import com.buse.korteks.game.PlayerProgress
 import com.buse.korteks.game.TaskResult
 import kotlin.random.Random
 import org.junit.Assert.assertEquals
@@ -95,6 +97,21 @@ class GameplayTest {
         assertEquals(100, result.accuracyPercent)
         assertEquals(StroopDifficulty.KOLAY.trialCount, result.correct)
         assertText("Tekrar oyna") // sonuç ekranı çizildi
+    }
+
+    @Test
+    fun `stroop - oyun bitince ilerleme tam bir kez kaydedilir`() {
+        var calls = 0
+        val fakeReward = GameReward(xpGained = 60, before = PlayerProgress(totalXp = 50), after = PlayerProgress(totalXp = 110))
+        val vm = StroopViewModel(Random(1))
+        vm.start(StroopDifficulty.KOLAY)
+        start { StroopScreen(onBack = {}, onGameFinished = { calls++; fakeReward }, vm = vm) }
+
+        while (vm.state is StroopUiState.Playing) tap(button(vm.playing.trial.ink.label))
+        advance(3_000) // sonuç ekranı birkaç saniye çizilsin: yeniden çizim tekrar kayıt yapmamalı
+        assertEquals(1, calls)
+        assertText("+60 XP")
+        assertText("🎉 Seviye 2!") // 50 → 110 XP: seviye 1 → 2
     }
 
     @Test

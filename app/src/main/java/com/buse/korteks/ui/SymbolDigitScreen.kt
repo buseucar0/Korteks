@@ -31,16 +31,21 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.buse.korteks.game.SymbolDigitDifficulty
 import com.buse.korteks.game.SymbolDigitTask
+import com.buse.korteks.game.GameReward
 import com.buse.korteks.game.TaskResult
 
 private sealed interface SpeedPhase {
     data object Intro : SpeedPhase
     data class Playing(val task: SymbolDigitTask) : SpeedPhase
-    data class Finished(val difficulty: SymbolDigitDifficulty, val result: TaskResult) : SpeedPhase
+    data class Finished(val difficulty: SymbolDigitDifficulty, val result: TaskResult, val reward: GameReward? = null) : SpeedPhase
 }
 
+/**
+ * onGameFinished: oyun bittiği AN bir kez çağrılır (ilerleme kaydı). Dönen ödül sonuç ekranında gösterilir.
+ * Varsayılan { null }: önizleme ve testlerde kayıt yapılmaz.
+ */
 @Composable
-fun SymbolDigitScreen(onBack: () -> Unit) {
+fun SymbolDigitScreen(onBack: () -> Unit, onGameFinished: (TaskResult) -> GameReward? = { null }) {
     var phase by remember { mutableStateOf<SpeedPhase>(SpeedPhase.Intro) }
     // Tek geri tuşu dinleyicisi: oyun/sonuç ekranındaysa girişe, girişteyse ana menüye dön
     BackHandler { if (phase is SpeedPhase.Intro) onBack() else phase = SpeedPhase.Intro }
@@ -63,7 +68,7 @@ fun SymbolDigitScreen(onBack: () -> Unit) {
             onBack = onBack,
         )
         is SpeedPhase.Playing -> key(p.task) {
-            SymbolDigitPlaying(p.task, onFinished = { phase = SpeedPhase.Finished(p.task.difficulty, it) })
+            SymbolDigitPlaying(p.task, onFinished = { phase = SpeedPhase.Finished(p.task.difficulty, it, onGameFinished(it)) })
         }
         is SpeedPhase.Finished -> ResultScreen(
             header = "⚡ HIZ · ${p.difficulty.title.uppercase()}",
@@ -75,6 +80,7 @@ fun SymbolDigitScreen(onBack: () -> Unit) {
             ),
             onReplay = { phase = SpeedPhase.Playing(SymbolDigitTask(p.difficulty)) },
             onMenu = { phase = SpeedPhase.Intro },
+            reward = p.reward,
         )
     }
 }

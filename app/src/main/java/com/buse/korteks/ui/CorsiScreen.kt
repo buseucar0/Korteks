@@ -38,6 +38,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.buse.korteks.game.CorsiDifficulty
 import com.buse.korteks.game.CorsiTask
+import com.buse.korteks.game.GameReward
 import com.buse.korteks.game.TaskResult
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -55,11 +56,15 @@ private val BLOCK_LIT = Color(0xFFFFEB3B)
 private sealed interface CorsiPhase {
     data object Intro : CorsiPhase
     data class Playing(val task: CorsiTask) : CorsiPhase
-    data class Finished(val task: CorsiTask, val result: TaskResult) : CorsiPhase
+    data class Finished(val task: CorsiTask, val result: TaskResult, val reward: GameReward? = null) : CorsiPhase
 }
 
+/**
+ * onGameFinished: oyun bittiği AN bir kez çağrılır (ilerleme kaydı). Dönen ödül sonuç ekranında gösterilir.
+ * Varsayılan { null }: önizleme ve testlerde kayıt yapılmaz.
+ */
 @Composable
-fun CorsiScreen(onBack: () -> Unit) {
+fun CorsiScreen(onBack: () -> Unit, onGameFinished: (TaskResult) -> GameReward? = { null }) {
     var phase by remember { mutableStateOf<CorsiPhase>(CorsiPhase.Intro) }
     // Tek geri tuşu dinleyicisi: oyun/sonuç ekranındaysa girişe, girişteyse ana menüye dön
     BackHandler { if (phase is CorsiPhase.Intro) onBack() else phase = CorsiPhase.Intro }
@@ -83,7 +88,7 @@ fun CorsiScreen(onBack: () -> Unit) {
             onBack = onBack,
         )
         is CorsiPhase.Playing -> key(p.task) {
-            CorsiPlaying(p.task, onFinished = { phase = CorsiPhase.Finished(p.task, it) })
+            CorsiPlaying(p.task, onFinished = { phase = CorsiPhase.Finished(p.task, it, onGameFinished(it)) })
         }
         is CorsiPhase.Finished -> ResultScreen(
             header = "🧊 CORSI · ${p.task.difficulty.title.uppercase()}",
@@ -95,6 +100,7 @@ fun CorsiScreen(onBack: () -> Unit) {
             ),
             onReplay = { phase = CorsiPhase.Playing(CorsiTask(p.task.difficulty)) },
             onMenu = { phase = CorsiPhase.Intro },
+            reward = p.reward,
         )
     }
 }

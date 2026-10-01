@@ -1,12 +1,14 @@
 package com.buse.korteks.ui
 
 import androidx.compose.ui.test.hasClickAction
+import androidx.compose.ui.test.hasScrollAction
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onFirst
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.test.performScrollToNode
 import com.buse.korteks.MainActivity
 import org.junit.Rule
 import org.junit.Test
@@ -35,10 +37,16 @@ class NavigationTest {
         rule.waitForIdle()
     }
 
+    /** Sekme listesi kaydırılabilir: alttaki sekmeler ekranda görünmüyorsa önce oraya kaydır. */
+    private fun openTab(tab: String) {
+        rule.onNode(hasScrollAction()).performScrollToNode(hasText(tab))
+        rule.onNodeWithText(tab).performClick()
+    }
+
     @Test
     fun `her sekme acilir ve ana menu butonuyla donulur`() {
         for (tab in tabs) {
-            rule.onNodeWithText(tab).performClick()
+            openTab(tab)
             rule.onNodeWithText("Bu görev nedir?").assertExists()
             rule.onNodeWithText("← Ana menü").performClick()
             rule.onNodeWithText("Korteks").assertExists()
@@ -48,7 +56,7 @@ class NavigationTest {
     @Test
     fun `geri tusu once oyundan girise, sonra ana menuye doner`() {
         for (tab in tabs) {
-            rule.onNodeWithText(tab).performClick()
+            openTab(tab)
             rule.onNodeWithText("Bu görev nedir?").assertExists("sekme=$tab")
 
             // İlk zorluk butonunu görünür yap (kaydırma bir animasyon: saat durmadan önce yapılmalı)
@@ -65,6 +73,27 @@ class NavigationTest {
             pressBack()
             rule.onNodeWithText("Korteks").assertExists("sekme=$tab: girişten ana menüye dönmeli")
         }
+    }
+
+    /** Uçtan uca: gerçek kayıt (SharedPreferences) ile bir oyun bitir, ödülü ve ana menüyü kontrol et. */
+    @Test
+    fun `oyun bitince xp ve seri ana menude gorunur`() {
+        rule.onNodeWithText("🔥 0").assertExists() // henüz hiç oynanmadı
+
+        rule.onNodeWithText("Dikkat").performClick()
+        val kolay = rule.onNode(hasText("Kolay", substring = true) and hasClickAction())
+        kolay.performScrollTo()
+        rule.mainClock.autoAdvance = false
+        kolay.performClick()
+        rule.mainClock.advanceTimeBy(100)
+        rule.mainClock.advanceTimeBy(12 * 3_100L) // 12 sorunun hepsinin süresi dolsun → 0 puan
+
+        rule.onNodeWithText("+10 XP").assertExists() // 0 puan da 10 XP verir
+        pressBack()
+        pressBack()
+        rule.onNodeWithText("🔥 1").assertExists()
+        rule.onNodeWithText("10 / 100 XP").assertExists()
+        rule.onNodeWithText("Seviye 1").assertExists()
     }
 
     /**

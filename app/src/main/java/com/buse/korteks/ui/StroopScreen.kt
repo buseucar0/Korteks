@@ -21,8 +21,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.buse.korteks.game.GameReward
 import com.buse.korteks.game.InkColor
 import com.buse.korteks.game.StroopDifficulty
+import com.buse.korteks.game.TaskResult
 
 /**
  * Stroop ekranı. Durumu StroopViewModel tutar; bu fonksiyon sadece durumu çizer ve
@@ -30,8 +32,23 @@ import com.buse.korteks.game.StroopDifficulty
  * viewModel(): Activity'ye bağlı ViewModel'i getirir, yoksa oluşturur. Testte dışarıdan verilebilir.
  */
 @Composable
-fun StroopScreen(onBack: () -> Unit, vm: StroopViewModel = viewModel()) {
+fun StroopScreen(
+    onBack: () -> Unit,
+    onGameFinished: (TaskResult) -> GameReward? = { null },
+    vm: StroopViewModel = viewModel(),
+) {
     val state = vm.state
+
+    /**
+     * Bir oyun hamlesini (cevap / süre dolması) uygular. Hamle oyunu bitirdiyse (Playing → Finished)
+     * ilerlemeyi kaydeder. Bu geçiş oyun başına tek kez olur → kayıt da tek kez yapılır.
+     */
+    fun move(action: () -> Unit) {
+        val wasPlaying = vm.state is StroopUiState.Playing
+        action()
+        val now = vm.state
+        if (wasPlaying && now is StroopUiState.Finished) vm.attachReward(onGameFinished(now.result))
+    }
 
     // Tek geri tuşu dinleyicisi: oyun/sonuç ekranındaysa girişe, girişteyse ana menüye dön
     BackHandler { if (state is StroopUiState.Intro) onBack() else vm.backToIntro() }
@@ -59,7 +76,11 @@ fun StroopScreen(onBack: () -> Unit, vm: StroopViewModel = viewModel()) {
             },
             onBack = onBack,
         )
-        is StroopUiState.Playing -> StroopPlaying(state, onAnswer = vm::answer, onTimeout = vm::timeout)
+        is StroopUiState.Playing -> StroopPlaying(
+            state,
+            onAnswer = { color, reactionMs, number -> move { vm.answer(color, reactionMs, number) } },
+            onTimeout = { number -> move { vm.timeout(number) } },
+        )
         is StroopUiState.Finished -> ResultScreen(
             header = "🎯 STROOP · ${state.difficulty.title.uppercase()}",
             score = state.result.score,
@@ -70,6 +91,7 @@ fun StroopScreen(onBack: () -> Unit, vm: StroopViewModel = viewModel()) {
             ),
             onReplay = { vm.start(state.difficulty) },
             onMenu = vm::backToIntro,
+            reward = state.reward,
         )
     }
 }

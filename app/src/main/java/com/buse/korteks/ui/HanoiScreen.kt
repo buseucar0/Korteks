@@ -33,16 +33,21 @@ import com.buse.korteks.game.HanoiDifficulty
 import com.buse.korteks.game.HanoiMove
 import com.buse.korteks.game.HanoiTask
 import com.buse.korteks.game.InkColor
+import com.buse.korteks.game.GameReward
 import com.buse.korteks.game.TaskResult
 
 private sealed interface HanoiPhase {
     data object Intro : HanoiPhase
     data class Playing(val task: HanoiTask) : HanoiPhase
-    data class Finished(val task: HanoiTask, val result: TaskResult) : HanoiPhase
+    data class Finished(val task: HanoiTask, val result: TaskResult, val reward: GameReward? = null) : HanoiPhase
 }
 
+/**
+ * onGameFinished: oyun bittiği AN bir kez çağrılır (ilerleme kaydı). Dönen ödül sonuç ekranında gösterilir.
+ * Varsayılan { null }: önizleme ve testlerde kayıt yapılmaz.
+ */
 @Composable
-fun HanoiScreen(onBack: () -> Unit) {
+fun HanoiScreen(onBack: () -> Unit, onGameFinished: (TaskResult) -> GameReward? = { null }) {
     var phase by remember { mutableStateOf<HanoiPhase>(HanoiPhase.Intro) }
     // Tek geri tuşu dinleyicisi: oyun/sonuç ekranındaysa girişe, girişteyse ana menüye dön
     BackHandler { if (phase is HanoiPhase.Intro) onBack() else phase = HanoiPhase.Intro }
@@ -65,7 +70,7 @@ fun HanoiScreen(onBack: () -> Unit) {
             onBack = onBack,
         )
         is HanoiPhase.Playing -> key(p.task) {
-            HanoiPlaying(p.task, onFinished = { phase = HanoiPhase.Finished(p.task, it) })
+            HanoiPlaying(p.task, onFinished = { phase = HanoiPhase.Finished(p.task, it, onGameFinished(it)) })
         }
         is HanoiPhase.Finished -> ResultScreen(
             header = "🗼 HANOİ · ${p.task.difficulty.title.uppercase()} · " + if (p.task.isSolved) "ÇÖZÜLDÜ" else "SÜRE DOLDU",
@@ -77,6 +82,7 @@ fun HanoiScreen(onBack: () -> Unit) {
             ),
             onReplay = { phase = HanoiPhase.Playing(HanoiTask(p.task.difficulty)) },
             onMenu = { phase = HanoiPhase.Intro },
+            reward = p.reward,
         )
     }
 }

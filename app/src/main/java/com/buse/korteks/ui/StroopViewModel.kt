@@ -4,6 +4,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
+import com.buse.korteks.game.GameReward
 import com.buse.korteks.game.InkColor
 import com.buse.korteks.game.StroopDifficulty
 import com.buse.korteks.game.StroopTask
@@ -26,7 +27,11 @@ sealed interface StroopUiState {
         val timeLimitMs: Long,
     ) : StroopUiState
 
-    data class Finished(val difficulty: StroopDifficulty, val result: TaskResult) : StroopUiState
+    data class Finished(
+        val difficulty: StroopDifficulty,
+        val result: TaskResult,
+        val reward: GameReward? = null,
+    ) : StroopUiState
 }
 
 /**
@@ -63,6 +68,12 @@ class StroopViewModel(private val random: Random = Random.Default) : ViewModel()
         val t = activeTask(trialNumber) ?: return
         t.timeout()
         publish()
+    }
+
+    /** Oyun bittikten sonra ilerleme kaydının ödülünü sonuç durumuna ekler (sonuç ekranında gösterilir). */
+    fun attachReward(reward: GameReward?) {
+        val s = state
+        if (s is StroopUiState.Finished) state = s.copy(reward = reward)
     }
 
     fun backToIntro() {

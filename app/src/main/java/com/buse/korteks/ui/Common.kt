@@ -33,6 +33,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.buse.korteks.game.GameReward
 import com.buse.korteks.game.InkColor
 
 // Bütün oyun ekranlarının ortak parçaları.
@@ -144,6 +145,7 @@ fun ResultScreen(
     stats: List<Pair<String, String>>,
     onReplay: () -> Unit,
     onMenu: () -> Unit,
+    reward: GameReward? = null,
 ) {
     Column(
         Modifier.fillMaxSize().padding(24.dp),
@@ -154,6 +156,15 @@ fun ResultScreen(
         Spacer(Modifier.height(16.dp))
         Text("$score", fontSize = 96.sp, fontWeight = FontWeight.Black, color = Color.White)
         Text("PUAN", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+
+        if (reward != null) {
+            Spacer(Modifier.height(16.dp))
+            Text("+${reward.xpGained} XP", fontSize = 32.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+            if (reward.leveledUp) {
+                Spacer(Modifier.height(8.dp))
+                Text("🎉 Seviye ${reward.levelAfter}!", fontSize = 36.sp, fontWeight = FontWeight.Black, color = Color(0xFFFFEB3B))
+            }
+        }
         Spacer(Modifier.height(40.dp))
 
         stats.chunked(3).forEach { row ->

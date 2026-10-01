@@ -43,16 +43,21 @@ import com.buse.korteks.game.Figure
 import com.buse.korteks.game.MatrixDifficulty
 import com.buse.korteks.game.MatrixTask
 import com.buse.korteks.game.Shape
+import com.buse.korteks.game.GameReward
 import com.buse.korteks.game.TaskResult
 
 private sealed interface MatrixPhase {
     data object Intro : MatrixPhase
     data class Playing(val task: MatrixTask) : MatrixPhase
-    data class Finished(val difficulty: MatrixDifficulty, val result: TaskResult) : MatrixPhase
+    data class Finished(val difficulty: MatrixDifficulty, val result: TaskResult, val reward: GameReward? = null) : MatrixPhase
 }
 
+/**
+ * onGameFinished: oyun bittiği AN bir kez çağrılır (ilerleme kaydı). Dönen ödül sonuç ekranında gösterilir.
+ * Varsayılan { null }: önizleme ve testlerde kayıt yapılmaz.
+ */
 @Composable
-fun MatrixScreen(onBack: () -> Unit) {
+fun MatrixScreen(onBack: () -> Unit, onGameFinished: (TaskResult) -> GameReward? = { null }) {
     val context = LocalContext.current
     // JSON dosyası bir kez okunur, ekran yeniden çizildikçe tekrar okunmaz
     val puzzles = remember { MatrixPuzzleLoader.load(context) }
@@ -81,7 +86,7 @@ fun MatrixScreen(onBack: () -> Unit) {
             onBack = onBack,
         )
         is MatrixPhase.Playing -> key(p.task) {
-            MatrixPlaying(p.task, onFinished = { phase = MatrixPhase.Finished(p.task.difficulty, it) })
+            MatrixPlaying(p.task, onFinished = { phase = MatrixPhase.Finished(p.task.difficulty, it, onGameFinished(it)) })
         }
         is MatrixPhase.Finished -> ResultScreen(
             header = "🔷 MATRİS · ${p.difficulty.title.uppercase()}",
@@ -93,6 +98,7 @@ fun MatrixScreen(onBack: () -> Unit) {
             ),
             onReplay = { phase = MatrixPhase.Playing(MatrixTask(puzzles, p.difficulty)) },
             onMenu = { phase = MatrixPhase.Intro },
+            reward = p.reward,
         )
     }
 }
