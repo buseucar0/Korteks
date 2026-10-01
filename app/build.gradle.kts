@@ -45,6 +45,8 @@ dependencies {
     implementation("androidx.compose.ui:ui")
     implementation("androidx.compose.material3:material3")
     implementation("androidx.activity:activity-compose:1.13.0")
+    // ViewModel: oyun durumunu ekrandan ayrı tutar, ekran yeniden oluşturulunca (tema/dil değişimi) kaybolmaz
+    implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.11.0")
 
     // Unit test (saf Kotlin oyun mantığı için, JVM üzerinde çalışır)
     testImplementation("junit:junit:4.13.2")

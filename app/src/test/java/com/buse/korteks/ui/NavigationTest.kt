@@ -66,4 +66,26 @@ class NavigationTest {
             rule.onNodeWithText("Korteks").assertExists("sekme=$tab: girişten ana menüye dönmeli")
         }
     }
+
+    /**
+     * Tema/dil değişince veya ekran döndürülünce Android, Activity'yi yıkıp yeniden kurar (recreate).
+     * Oyun durumu Compose'un remember'ında tutulursa bu sırada kaybolur; ViewModel'de tutulursa kalır.
+     */
+    @Test
+    fun `ekran yeniden olusturulunca stroop oyunu kaldigi yerden devam eder`() {
+        rule.onNodeWithText("Dikkat").performClick()
+        val kolay = rule.onNode(hasText("Kolay", substring = true) and hasClickAction())
+        kolay.performScrollTo()
+        rule.mainClock.autoAdvance = false
+        kolay.performClick()
+        rule.mainClock.advanceTimeBy(100)
+
+        // İlk iki sorunun süresi dolsun (Kolay: 3 sn/soru) → 3. sorudayız
+        rule.mainClock.advanceTimeBy(6_200)
+        rule.onNodeWithText("3 / 12").assertExists()
+
+        rule.activityRule.scenario.recreate()
+        rule.mainClock.advanceTimeBy(100)
+        rule.onNodeWithText("3 / 12").assertExists("Activity yeniden kurulunca oyun sıfırlandı")
+    }
 }

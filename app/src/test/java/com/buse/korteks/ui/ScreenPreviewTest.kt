@@ -15,7 +15,6 @@ import com.buse.korteks.game.MatrixTask
 import com.buse.korteks.game.NBackDifficulty
 import com.buse.korteks.game.NBackTask
 import com.buse.korteks.game.StroopDifficulty
-import com.buse.korteks.game.StroopTask
 import com.buse.korteks.game.SymbolDigitDifficulty
 import com.buse.korteks.game.SymbolDigitTask
 import kotlin.random.Random
@@ -39,13 +38,13 @@ class ScreenPreviewTest {
     fun anaMenu() = snap { HomeScreen(onOpen = {}) }
 
     @Test
-    fun stroopGiris() = snap { StroopScreen(onBack = {}) }
+    fun stroopGiris() = snap { StroopScreen(onBack = {}, vm = StroopViewModel()) }
 
     @Test
-    fun stroopOyun() = snap { StroopPlaying(StroopTask(StroopDifficulty.ORTA, Random(1)), onFinished = {}) }
+    fun stroopOyun() = snap { StroopScreen(onBack = {}, vm = StroopViewModel(Random(1)).apply { start(StroopDifficulty.ORTA) }) }
 
     @Test
-    fun stroopOyunZor() = snap { StroopPlaying(StroopTask(StroopDifficulty.ZOR, Random(1)), onFinished = {}) }
+    fun stroopOyunZor() = snap { StroopScreen(onBack = {}, vm = StroopViewModel(Random(1)).apply { start(StroopDifficulty.ZOR) }) }
 
     @Test
     fun matrisGiris() = snap { MatrixScreen(onBack = {}) }

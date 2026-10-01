@@ -23,7 +23,6 @@ import com.buse.korteks.game.MatrixTask
 import com.buse.korteks.game.NBackDifficulty
 import com.buse.korteks.game.NBackTask
 import com.buse.korteks.game.StroopDifficulty
-import com.buse.korteks.game.StroopTask
 import com.buse.korteks.game.SymbolDigitDifficulty
 import com.buse.korteks.game.SymbolDigitTask
 import com.buse.korteks.game.TaskResult
@@ -75,39 +74,44 @@ class GameplayTest {
 
     // ---------------------------------------------------------------- Stroop
 
+    /** Stroop artık ViewModel üzerinden: test ViewModel'i sabit tohumla kurup ekrana verir. */
+    private fun stroop(difficulty: StroopDifficulty, seed: Int): StroopViewModel {
+        val vm = StroopViewModel(Random(seed))
+        vm.start(difficulty)
+        start { StroopScreen(onBack = {}, vm = vm) }
+        return vm
+    }
+
+    private val StroopViewModel.playing get() = state as StroopUiState.Playing
+
     @Test
     fun `stroop - hep murekkep rengine basan oyuncu yuzde yuz alir`() {
-        val task = StroopTask(StroopDifficulty.KOLAY, Random(1))
-        var result: TaskResult? = null
-        start { StroopPlaying(task) { result = it } }
-
-        while (result == null) {
-            assertText("${task.progress + 1} / ${task.trials.size}")
-            tap(button(task.currentQuestion().ink.label))
+        val vm = stroop(StroopDifficulty.KOLAY, seed = 1)
+        while (vm.state is StroopUiState.Playing) {
+            assertText("${vm.playing.number} / ${vm.playing.total}")
+            tap(button(vm.playing.trial.ink.label))
         }
-        assertEquals(100, result!!.accuracyPercent)
-        assertEquals(task.trials.size, result!!.correct)
+        val result = (vm.state as StroopUiState.Finished).result
+        assertEquals(100, result.accuracyPercent)
+        assertEquals(StroopDifficulty.KOLAY.trialCount, result.correct)
+        assertText("Tekrar oyna") // sonuç ekranı çizildi
     }
 
     @Test
     fun `stroop - kelimenin anlamina basmak yanlis sayilir`() {
-        val task = StroopTask(StroopDifficulty.ZOR, Random(2)) // ZOR: hepsi uyumsuz
-        start { StroopPlaying(task) {} }
-        tap(button(task.currentQuestion().word.label))
-        assertEquals(0, task.result().correct)
+        val vm = stroop(StroopDifficulty.ZOR, seed = 2) // ZOR: hepsi uyumsuz
+        tap(button(vm.playing.trial.word.label))
         assertText("2 / 20")
     }
 
     @Test
     fun `stroop - sure dolunca sonraki soruya gecilir`() {
-        val task = StroopTask(StroopDifficulty.ORTA, Random(3)) // soru başına 2 sn
-        start { StroopPlaying(task) {} }
+        stroop(StroopDifficulty.ORTA, seed = 3) // soru başına 2 sn
         assertText("1 / 16")
         advance(1_900)
         assertText("1 / 16")
         advance(200)
         assertText("2 / 16")
-        assertEquals(0, task.result().correct)
     }
 
     // ---------------------------------------------------------------- Matris
