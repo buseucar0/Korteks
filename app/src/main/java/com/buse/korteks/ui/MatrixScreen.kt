@@ -20,11 +20,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.key
-import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
@@ -38,37 +34,42 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.buse.korteks.data.MatrixPuzzleLoader
 import com.buse.korteks.game.Figure
 import com.buse.korteks.game.MatrixDifficulty
-import com.buse.korteks.game.MatrixTask
 import com.buse.korteks.game.Shape
 import com.buse.korteks.game.GameReward
 import com.buse.korteks.game.TaskResult
-
-private sealed interface MatrixPhase {
-    data object Intro : MatrixPhase
-    data class Playing(val task: MatrixTask) : MatrixPhase
-    data class Finished(val difficulty: MatrixDifficulty, val result: TaskResult, val reward: GameReward? = null) : MatrixPhase
-}
 
 /**
  * onGameFinished: oyun bittiği AN bir kez çağrılır (ilerleme kaydı). Dönen ödül sonuç ekranında gösterilir.
  * Varsayılan { null }: önizleme ve testlerde kayıt yapılmaz.
  */
 @Composable
-fun MatrixScreen(onBack: () -> Unit, onGameFinished: (TaskResult) -> GameReward? = { null }) {
+fun MatrixScreen(
+    onBack: () -> Unit,
+    onGameFinished: (TaskResult) -> GameReward? = { null },
+    vm: MatrixViewModel = viewModel(),
+) {
     val context = LocalContext.current
     // JSON dosyası bir kez okunur, ekran yeniden çizildikçe tekrar okunmaz
     val puzzles = remember { MatrixPuzzleLoader.load(context) }
-    var phase by remember { mutableStateOf<MatrixPhase>(MatrixPhase.Intro) }
+    val state = vm.state
+
+    /** Hamleyi uygula; hamle oyunu bitirdiyse (Playing → Finished) ilerlemeyi bir kez kaydet. */
+    fun move(action: () -> Unit) {
+        val wasPlaying = vm.state is MatrixUiState.Playing
+        action()
+        val now = vm.state
+        if (wasPlaying && now is MatrixUiState.Finished) vm.attachReward(onGameFinished(now.result))
+    }
 
     // Tek geri tuşu dinleyicisi: oyun/sonuç ekranındaysa girişe, girişteyse ana menüye dön
+    BackHandler { if (state is MatrixUiState.Intro) onBack() else vm.backToIntro() }
 
-    BackHandler { if (phase is MatrixPhase.Intro) onBack() else phase = MatrixPhase.Intro }
-
-    when (val p = phase) {
-        MatrixPhase.Intro -> TaskIntro(
+    when (state) {
+        MatrixUiState.Intro -> TaskIntro(
             emoji = "🔷",
             title = "Mantık",
             info = listOf(
@@ -81,51 +82,42 @@ fun MatrixScreen(onBack: () -> Unit, onGameFinished: (TaskResult) -> GameReward?
                 "Kuralı bul ve sağ alttaki eksik hücreye uyan seçeneği seç.",
             choices = MatrixDifficulty.entries.map { d ->
                 "${d.title}  ·  ${d.puzzleCount} bulmaca  ·  ${d.optionCount} seçenek  ·  ${d.timeLimitMs / 1000} sn" to
-                    { phase = MatrixPhase.Playing(MatrixTask(puzzles, d)) }
+                    { vm.start(puzzles, d) }
             },
             onBack = onBack,
         )
-        is MatrixPhase.Playing -> key(p.task) {
-            MatrixPlaying(p.task, onFinished = { phase = MatrixPhase.Finished(p.task.difficulty, it, onGameFinished(it)) })
-        }
-        is MatrixPhase.Finished -> ResultScreen(
-            header = "🔷 MATRİS · ${p.difficulty.title.uppercase()}",
-            score = p.result.score,
+        is MatrixUiState.Playing -> MatrixPlaying(
+            state,
+            onAnswer = { index, reactionMs, number -> move { vm.answer(index, reactionMs, number) } },
+            onTimeout = { number -> move { vm.timeout(number) } },
+        )
+        is MatrixUiState.Finished -> ResultScreen(
+            header = "🔷 MATRİS · ${state.difficulty.title.uppercase()}",
+            score = state.result.score,
             stats = listOf(
-                "Doğruluk" to "%${p.result.accuracyPercent}",
-                "Doğru" to "${p.result.correct}/${p.result.total}",
-                "Ort. süre" to if (p.result.averageReactionMs > 0) "${formatSeconds(p.result.averageReactionMs)} sn" else "—",
+                "Doğruluk" to "%${state.result.accuracyPercent}",
+                "Doğru" to "${state.result.correct}/${state.result.total}",
+                "Ort. süre" to if (state.result.averageReactionMs > 0) "${formatSeconds(state.result.averageReactionMs)} sn" else "—",
             ),
-            onReplay = { phase = MatrixPhase.Playing(MatrixTask(puzzles, p.difficulty)) },
-            onMenu = { phase = MatrixPhase.Intro },
-            reward = p.reward,
+            onReplay = { vm.start(puzzles, state.difficulty) },
+            onMenu = vm::backToIntro,
+            reward = state.reward,
         )
     }
 }
 
+/** Oyun ekranı: durumsuz. Ne göstereceğini [state]'ten alır, olayları yukarı bildirir. */
 @Composable
-internal fun MatrixPlaying(task: MatrixTask, onFinished: (TaskResult) -> Unit) {
-    var trialNo by remember { mutableIntStateOf(0) }
-    val shownTrial = task.progress
-    val limitMs = task.difficulty.timeLimitMs
-
-    fun goNext() {
-        trialNo = task.progress
-        if (task.isFinished) onFinished(task.result())
-    }
-
-    val elapsedMs by rememberTrialClock(trialNo, limitMs) {
-        if (!task.isFinished && task.progress == shownTrial) {
-            task.timeout()
-            goNext()
-        }
-    }
-
-    if (task.isFinished) return
-    val q = task.currentQuestion()
+internal fun MatrixPlaying(
+    state: MatrixUiState.Playing,
+    onAnswer: (optionIndex: Int, reactionMs: Long, trialNumber: Int) -> Unit,
+    onTimeout: (trialNumber: Int) -> Unit,
+) {
+    val elapsedMs by rememberTrialClock(state.number, state.timeLimitMs) { onTimeout(state.number) }
+    val q = state.question
 
     Column(Modifier.fillMaxSize().padding(20.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-        ProgressHeader("${task.progress + 1} / ${task.questions.size}", 1f - elapsedMs.toFloat() / limitMs)
+        ProgressHeader("${state.number} / ${state.total}", 1f - elapsedMs.toFloat() / state.timeLimitMs)
         Spacer(Modifier.height(20.dp))
 
         // 3x3 tablo
@@ -159,12 +151,7 @@ internal fun MatrixPlaying(task: MatrixTask, onFinished: (TaskResult) -> Unit) {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 row.forEach { (index, figure) ->
                     Card(
-                        onClick = {
-                            if (task.progress == shownTrial) {
-                                task.answer(index, elapsedMs)
-                                goNext()
-                            }
-                        },
+                        onClick = { onAnswer(index, elapsedMs, state.number) },
                         modifier = Modifier.weight(1f).aspectRatio(if (perRow == 2) 1.6f else 1f).testTag("secenek_$index"),
                         colors = CardDefaults.cardColors(containerColor = Color(0xFF2C2C2C)),
                     ) {

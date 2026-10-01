@@ -13,10 +13,9 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.key
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -29,31 +28,37 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import com.buse.korteks.game.HanoiDifficulty
-import com.buse.korteks.game.HanoiMove
-import com.buse.korteks.game.HanoiTask
-import com.buse.korteks.game.InkColor
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.buse.korteks.game.GameReward
+import com.buse.korteks.game.HanoiDifficulty
+import com.buse.korteks.game.InkColor
 import com.buse.korteks.game.TaskResult
-
-private sealed interface HanoiPhase {
-    data object Intro : HanoiPhase
-    data class Playing(val task: HanoiTask) : HanoiPhase
-    data class Finished(val task: HanoiTask, val result: TaskResult, val reward: GameReward? = null) : HanoiPhase
-}
 
 /**
  * onGameFinished: oyun bittiği AN bir kez çağrılır (ilerleme kaydı). Dönen ödül sonuç ekranında gösterilir.
  * Varsayılan { null }: önizleme ve testlerde kayıt yapılmaz.
  */
 @Composable
-fun HanoiScreen(onBack: () -> Unit, onGameFinished: (TaskResult) -> GameReward? = { null }) {
-    var phase by remember { mutableStateOf<HanoiPhase>(HanoiPhase.Intro) }
-    // Tek geri tuşu dinleyicisi: oyun/sonuç ekranındaysa girişe, girişteyse ana menüye dön
-    BackHandler { if (phase is HanoiPhase.Intro) onBack() else phase = HanoiPhase.Intro }
+fun HanoiScreen(
+    onBack: () -> Unit,
+    onGameFinished: (TaskResult) -> GameReward? = { null },
+    vm: HanoiViewModel = viewModel(),
+) {
+    val state = vm.state
 
-    when (val p = phase) {
-        HanoiPhase.Intro -> TaskIntro(
+    /** Hamleyi uygula; hamle oyunu bitirdiyse (Playing → Finished) ilerlemeyi bir kez kaydet. */
+    fun move(action: () -> Unit) {
+        val wasPlaying = vm.state is HanoiUiState.Playing
+        action()
+        val now = vm.state
+        if (wasPlaying && now is HanoiUiState.Finished) vm.attachReward(onGameFinished(now.result))
+    }
+
+    // Tek geri tuşu dinleyicisi: oyun/sonuç ekranındaysa girişe, girişteyse ana menüye dön
+    BackHandler { if (state is HanoiUiState.Intro) onBack() else vm.backToIntro() }
+
+    when (state) {
+        HanoiUiState.Intro -> TaskIntro(
             emoji = "🗼",
             title = "Planlama",
             info = listOf(
@@ -65,57 +70,61 @@ fun HanoiScreen(onBack: () -> Unit, onGameFinished: (TaskResult) -> GameReward? 
                 "koymak istediğin çubuğa dokun. Kurallar: tek seferde bir disk, büyük disk küçüğün üstüne konamaz.",
             choices = HanoiDifficulty.entries.map { d ->
                 "${d.title}  ·  ${d.disks} disk  ·  en az ${(1 shl d.disks) - 1} hamle  ·  ${d.timeLimitMs / 1000} sn" to
-                    { phase = HanoiPhase.Playing(HanoiTask(d)) }
+                    { vm.start(d) }
             },
             onBack = onBack,
         )
-        is HanoiPhase.Playing -> key(p.task) {
-            HanoiPlaying(p.task, onFinished = { phase = HanoiPhase.Finished(p.task, it, onGameFinished(it)) })
-        }
-        is HanoiPhase.Finished -> ResultScreen(
-            header = "🗼 HANOİ · ${p.task.difficulty.title.uppercase()} · " + if (p.task.isSolved) "ÇÖZÜLDÜ" else "SÜRE DOLDU",
-            score = p.result.score,
+        is HanoiUiState.Playing -> HanoiPlaying(
+            state,
+            initialElapsedMs = vm.sessionElapsedMs,
+            onTick = { vm.sessionElapsedMs = it },
+            onMove = { from, to -> move { vm.move(from, to) } },
+            onTimeout = { gameNo -> move { vm.timeout(gameNo) } },
+        )
+        is HanoiUiState.Finished -> ResultScreen(
+            header = "🗼 HANOİ · ${state.difficulty.title.uppercase()} · " + if (state.solved) "ÇÖZÜLDÜ" else "SÜRE DOLDU",
+            score = state.result.score,
             stats = listOf(
-                "Hamle" to "${p.task.moves}",
-                "En az" to "${p.task.minimumMoves}",
-                "Süre" to if (p.task.isSolved) "${formatSeconds(p.result.averageReactionMs)} sn" else "—",
+                "Hamle" to "${state.moves}",
+                "En az" to "${state.minimumMoves}",
+                "Süre" to if (state.solved) "${formatSeconds(state.result.averageReactionMs)} sn" else "—",
             ),
-            onReplay = { phase = HanoiPhase.Playing(HanoiTask(p.task.difficulty)) },
-            onMenu = { phase = HanoiPhase.Intro },
-            reward = p.reward,
+            onReplay = { vm.start(state.difficulty) },
+            onMenu = vm::backToIntro,
+            reward = state.reward,
         )
     }
 }
 
+/** Oyun ekranı. Seçili çubuk (disk alınacak yer) bu ekranın geçici durumu. */
 @Composable
-internal fun HanoiPlaying(task: HanoiTask, onFinished: (TaskResult) -> Unit) {
-    var moveNo by remember { mutableIntStateOf(0) }
-    var selected by remember { mutableStateOf<Int?>(null) } // seçili (disk alınacak) çubuk
-    val limitMs = task.difficulty.timeLimitMs
+internal fun HanoiPlaying(
+    state: HanoiUiState.Playing,
+    initialElapsedMs: Long,
+    onTick: (Long) -> Unit,
+    onMove: (from: Int, to: Int) -> Unit,
+    onTimeout: (gameNo: Int) -> Unit,
+) {
+    var selected by remember { mutableStateOf<Int?>(null) }
+    val elapsedMs by rememberTrialClock(state.gameNo, state.timeLimitMs, initialElapsedMs, onTick) { onTimeout(state.gameNo) }
 
-    val elapsedMs by rememberTrialClock(Unit, limitMs) {
-        if (!task.isFinished) {
-            task.timeout()
-            onFinished(task.result())
-        }
-    }
+    // pointerInput bir kez kurulur; içinden her zaman en güncel durumu okumak için rememberUpdatedState
+    val latestState by rememberUpdatedState(state)
 
     fun onPegTap(peg: Int) {
-        if (task.isFinished) return
         val from = selected
         if (from == null) {
-            if (task.currentQuestion()[peg].isNotEmpty()) selected = peg
+            if (latestState.pegs[peg].isNotEmpty()) selected = peg
         } else {
-            if (task.answer(HanoiMove(from, peg), elapsedMs)) moveNo++
+            onMove(from, peg) // kural dışıysa ViewModel yok sayar
             selected = null
-            if (task.isFinished) onFinished(task.result())
         }
     }
 
     Column(Modifier.fillMaxSize().padding(20.dp), horizontalAlignment = Alignment.CenterHorizontally) {
         ProgressHeader(
-            "Hamle: ${task.moves}  ·  En az: ${task.minimumMoves}  ·  ${(limitMs - elapsedMs).coerceAtLeast(0) / 1000} sn",
-            1f - elapsedMs.toFloat() / limitMs,
+            "Hamle: ${state.moves}  ·  En az: ${state.minimumMoves}  ·  ${(state.timeLimitMs - elapsedMs).coerceAtLeast(0) / 1000} sn",
+            1f - elapsedMs.toFloat() / state.timeLimitMs,
         )
         Spacer(Modifier.height(24.dp))
         Text(
@@ -134,9 +143,7 @@ internal fun HanoiPlaying(task: HanoiTask, onFinished: (TaskResult) -> Unit) {
                     detectTapGestures { pos -> onPegTap((pos.x / (size.width / 3f)).toInt().coerceIn(0, 2)) }
                 },
         ) {
-            // moveNo ve selected'ı burada okumak, değiştiklerinde Canvas'ın yeniden çizilmesini sağlar
-            moveNo
-            drawHanoi(task.currentQuestion(), task.difficulty.disks, selected)
+            drawHanoi(state.pegs, state.disks, selected)
         }
     }
 }

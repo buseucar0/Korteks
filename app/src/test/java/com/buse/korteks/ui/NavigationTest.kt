@@ -117,4 +117,20 @@ class NavigationTest {
         rule.mainClock.advanceTimeBy(100)
         rule.onNodeWithText("3 / 12").assertExists("Activity yeniden kurulunca oyun sıfırlandı")
     }
+
+    /** Hız oyununda süre bütün oturum için: ekran yeniden kurulunca sayaç sıfırlanmamalı (bedava süre olmasın). */
+    @Test
+    fun `ekran yeniden olusturulunca hiz oyununun suresi kaldigi yerden devam eder`() {
+        openTab("Hız")
+        val kolay = rule.onNode(hasText("Kolay", substring = true) and hasClickAction())
+        kolay.performScrollTo()
+        rule.mainClock.autoAdvance = false
+        kolay.performClick()
+        rule.mainClock.advanceTimeBy(20_100) // 60 sn'nin 20'si geçti
+        rule.onNodeWithText("Kalan: 39 sn  ·  Doğru: 0").assertExists()
+
+        rule.activityRule.scenario.recreate()
+        rule.mainClock.advanceTimeBy(100)
+        rule.onNodeWithText("Kalan: 39 sn  ·  Doğru: 0").assertExists("süre sıfırlandı")
+    }
 }

@@ -20,8 +20,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.key
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -33,33 +31,40 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.buse.korteks.game.GameReward
 import com.buse.korteks.game.NBackDifficulty
 import com.buse.korteks.game.NBackResponse
-import com.buse.korteks.game.NBackTask
-import com.buse.korteks.game.GameReward
 import com.buse.korteks.game.TaskResult
 
 /** Uyaran her adımın başında bu kadar süre görünür, sonra kaybolur (hafızada tutulmalı). */
 private const val STIMULUS_VISIBLE_MS = 1000L
-
-private sealed interface NBackPhase {
-    data object Intro : NBackPhase
-    data class Playing(val task: NBackTask) : NBackPhase
-    data class Finished(val task: NBackTask, val result: TaskResult, val reward: GameReward? = null) : NBackPhase
-}
 
 /**
  * onGameFinished: oyun bittiği AN bir kez çağrılır (ilerleme kaydı). Dönen ödül sonuç ekranında gösterilir.
  * Varsayılan { null }: önizleme ve testlerde kayıt yapılmaz.
  */
 @Composable
-fun NBackScreen(onBack: () -> Unit, onGameFinished: (TaskResult) -> GameReward? = { null }) {
-    var phase by remember { mutableStateOf<NBackPhase>(NBackPhase.Intro) }
-    // Tek geri tuşu dinleyicisi: oyun/sonuç ekranındaysa girişe, girişteyse ana menüye dön
-    BackHandler { if (phase is NBackPhase.Intro) onBack() else phase = NBackPhase.Intro }
+fun NBackScreen(
+    onBack: () -> Unit,
+    onGameFinished: (TaskResult) -> GameReward? = { null },
+    vm: NBackViewModel = viewModel(),
+) {
+    val state = vm.state
 
-    when (val p = phase) {
-        NBackPhase.Intro -> TaskIntro(
+    /** Hamleyi uygula; hamle oyunu bitirdiyse (Playing → Finished) ilerlemeyi bir kez kaydet. */
+    fun move(action: () -> Unit) {
+        val wasPlaying = vm.state is NBackUiState.Playing
+        action()
+        val now = vm.state
+        if (wasPlaying && now is NBackUiState.Finished) vm.attachReward(onGameFinished(now.result))
+    }
+
+    // Tek geri tuşu dinleyicisi: oyun/sonuç ekranındaysa girişe, girişteyse ana menüye dön
+    BackHandler { if (state is NBackUiState.Intro) onBack() else vm.backToIntro() }
+
+    when (state) {
+        NBackUiState.Intro -> TaskIntro(
             emoji = "🧠",
             title = "Bellek",
             info = listOf(
@@ -72,66 +77,61 @@ fun NBackScreen(onBack: () -> Unit, onGameFinished: (TaskResult) -> GameReward? 
                 "KONUM'a, harf N adım öncekiyle aynıysa HARF'e bas. İkisi de aynıysa ikisine de bas, " +
                 "hiçbiri değilse hiçbir şeye basma.",
             choices = NBackDifficulty.entries.map { d ->
-                "${d.title}  ·  ${d.n + d.scoredSteps} adım  ·  ${formatSeconds(d.stepMs)} sn/adım" to
-                    { phase = NBackPhase.Playing(NBackTask(d)) }
+                "${d.title}  ·  ${d.n + d.scoredSteps} adım  ·  ${formatSeconds(d.stepMs)} sn/adım" to { vm.start(d) }
             },
             onBack = onBack,
         )
-        is NBackPhase.Playing -> key(p.task) {
-            NBackPlaying(p.task, onFinished = { phase = NBackPhase.Finished(p.task, it, onGameFinished(it)) })
-        }
-        is NBackPhase.Finished -> ResultScreen(
-            header = "🧠 BELLEK · ${p.task.difficulty.title.uppercase()}",
-            score = p.result.score,
+        is NBackUiState.Playing -> NBackPlaying(
+            state,
+            onStepEnded = { response, firstPressMs, number -> move { vm.stepEnded(response, firstPressMs, number) } },
+        )
+        is NBackUiState.Finished -> ResultScreen(
+            header = "🧠 BELLEK · ${state.difficulty.title.uppercase()}",
+            score = state.result.score,
             stats = listOf(
-                "Doğruluk" to "%${p.result.accuracyPercent}",
-                "İsabet" to "${p.task.hits}/${p.task.hits + p.task.misses}",
-                "Yanlış alarm" to "${p.task.falseAlarms}",
+                "Doğruluk" to "%${state.result.accuracyPercent}",
+                "İsabet" to "${state.hits}/${state.hits + state.misses}",
+                "Yanlış alarm" to "${state.falseAlarms}",
             ),
-            onReplay = { phase = NBackPhase.Playing(NBackTask(p.task.difficulty)) },
-            onMenu = { phase = NBackPhase.Intro },
-            reward = p.reward,
+            onReplay = { vm.start(state.difficulty) },
+            onMenu = vm::backToIntro,
+            reward = state.reward,
         )
     }
 }
 
+/**
+ * Oyun ekranı. Adım içindeki basışlar (hangi butona basıldı) bu ekranın kendi durumu:
+ * adım bitince ViewModel'e tek seferde bildirilir.
+ */
 @Composable
-internal fun NBackPlaying(task: NBackTask, onFinished: (TaskResult) -> Unit) {
-    var stepNo by remember { mutableIntStateOf(0) }
-    val shownStep = task.progress
-    val n = task.difficulty.n
-    val stepMs = task.difficulty.stepMs
-
-    // remember(stepNo): adım değişince basış bilgileri kendiliğinden sıfırlanır
-    var positionPressed by remember(stepNo) { mutableStateOf(false) }
-    var letterPressed by remember(stepNo) { mutableStateOf(false) }
-    var firstPressMs by remember(stepNo) { mutableLongStateOf(0L) }
+internal fun NBackPlaying(
+    state: NBackUiState.Playing,
+    onStepEnded: (response: NBackResponse, firstPressMs: Long, stepNumber: Int) -> Unit,
+) {
+    // remember(state.number): adım değişince basış bilgileri kendiliğinden sıfırlanır
+    var positionPressed by remember(state.number) { mutableStateOf(false) }
+    var letterPressed by remember(state.number) { mutableStateOf(false) }
+    var firstPressMs by remember(state.number) { mutableLongStateOf(0L) }
 
     // Adım süresi dolunca o adımdaki basışlar değerlendirilir, sonraki adıma geçilir
-    val elapsedMs by rememberTrialClock(stepNo, stepMs) {
-        if (!task.isFinished && task.progress == shownStep) {
-            task.answer(NBackResponse(positionPressed, letterPressed), firstPressMs)
-            stepNo = task.progress
-            if (task.isFinished) onFinished(task.result())
-        }
+    val elapsedMs by rememberTrialClock(state.number, state.stepMs) {
+        onStepEnded(NBackResponse(positionPressed, letterPressed), firstPressMs, state.number)
     }
 
-    if (task.isFinished) return
-    val stimulus = task.currentQuestion()
     val visible = elapsedMs < STIMULUS_VISIBLE_MS
-    val scored = task.progress >= n
 
     fun press(isPosition: Boolean) {
-        if (!scored) return
+        if (!state.scored) return
         if (firstPressMs == 0L) firstPressMs = elapsedMs.coerceAtLeast(1)
         if (isPosition) positionPressed = true else letterPressed = true
     }
 
     Column(Modifier.fillMaxSize().padding(20.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-        ProgressHeader("${task.progress + 1} / ${task.stimuli.size}", 1f - elapsedMs.toFloat() / stepMs)
+        ProgressHeader("${state.number} / ${state.total}", 1f - elapsedMs.toFloat() / state.stepMs)
         Spacer(Modifier.height(12.dp))
         Text(
-            if (scored) "$n adım öncekiyle aynı mı?" else "Ezberle… (${n - task.progress} adım sonra başlıyor)",
+            if (state.scored) "${state.n} adım öncekiyle aynı mı?" else "Ezberle… (${state.n - state.number + 1} adım sonra başlıyor)",
             style = MaterialTheme.typography.titleMedium,
             textAlign = TextAlign.Center,
         )
@@ -141,7 +141,7 @@ internal fun NBackPlaying(task: NBackTask, onFinished: (TaskResult) -> Unit) {
                 for (row in 0..2) {
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         for (col in 0..2) {
-                            val active = visible && stimulus.position == row * 3 + col
+                            val active = visible && state.stimulus.position == row * 3 + col
                             Box(
                                 Modifier
                                     .weight(1f)
@@ -154,7 +154,7 @@ internal fun NBackPlaying(task: NBackTask, onFinished: (TaskResult) -> Unit) {
                             ) {
                                 if (active) {
                                     Text(
-                                        "${stimulus.letter}",
+                                        "${state.stimulus.letter}",
                                         fontSize = 44.sp,
                                         fontWeight = FontWeight.Black,
                                         color = MaterialTheme.colorScheme.onPrimary,
@@ -168,8 +168,8 @@ internal fun NBackPlaying(task: NBackTask, onFinished: (TaskResult) -> Unit) {
         }
 
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            AnswerButton("📍 KONUM", pressed = positionPressed, enabled = scored) { press(isPosition = true) }
-            AnswerButton("🔤 HARF", pressed = letterPressed, enabled = scored) { press(isPosition = false) }
+            AnswerButton("📍 KONUM", pressed = positionPressed, enabled = state.scored) { press(isPosition = true) }
+            AnswerButton("🔤 HARF", pressed = letterPressed, enabled = state.scored) { press(isPosition = false) }
         }
     }
 }

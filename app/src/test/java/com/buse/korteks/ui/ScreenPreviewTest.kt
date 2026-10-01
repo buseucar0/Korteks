@@ -6,20 +6,14 @@ import app.cash.paparazzi.DeviceConfig
 import app.cash.paparazzi.Paparazzi
 import com.buse.korteks.data.MatrixPuzzleLoader
 import com.buse.korteks.game.CorsiDifficulty
-import com.buse.korteks.game.CorsiTask
 import com.buse.korteks.game.HanoiDifficulty
-import com.buse.korteks.game.HanoiMove
 import com.buse.korteks.game.GameReward
-import com.buse.korteks.game.HanoiTask
 import com.buse.korteks.game.LevelInfo
 import com.buse.korteks.game.MatrixDifficulty
-import com.buse.korteks.game.MatrixTask
 import com.buse.korteks.game.NBackDifficulty
-import com.buse.korteks.game.NBackTask
 import com.buse.korteks.game.PlayerProgress
 import com.buse.korteks.game.StroopDifficulty
 import com.buse.korteks.game.SymbolDigitDifficulty
-import com.buse.korteks.game.SymbolDigitTask
 import kotlin.random.Random
 import org.junit.Rule
 import org.junit.Test
@@ -67,18 +61,18 @@ class ScreenPreviewTest {
     fun stroopOyunZor() = snap { StroopScreen(onBack = {}, vm = StroopViewModel(Random(1)).apply { start(StroopDifficulty.ZOR) }) }
 
     @Test
-    fun matrisGiris() = snap { MatrixScreen(onBack = {}) }
+    fun matrisGiris() = snap { MatrixScreen(onBack = {}, vm = MatrixViewModel()) }
 
     @Test
     fun matrisOyunKolay() = snap {
         val puzzles = MatrixPuzzleLoader.load(LocalContext.current)
-        MatrixPlaying(MatrixTask(puzzles, MatrixDifficulty.KOLAY, Random(1)), onFinished = {})
+        MatrixScreen(onBack = {}, vm = MatrixViewModel(Random(1)).apply { start(puzzles, MatrixDifficulty.KOLAY) })
     }
 
     @Test
     fun matrisOyunZor() = snap {
         val puzzles = MatrixPuzzleLoader.load(LocalContext.current)
-        MatrixPlaying(MatrixTask(puzzles, MatrixDifficulty.ZOR, Random(1)), onFinished = {})
+        MatrixScreen(onBack = {}, vm = MatrixViewModel(Random(1)).apply { start(puzzles, MatrixDifficulty.ZOR) })
     }
 
     @Test
@@ -93,25 +87,26 @@ class ScreenPreviewTest {
     }
 
     @Test
-    fun hizGiris() = snap { SymbolDigitScreen(onBack = {}) }
+    fun hizGiris() = snap { SymbolDigitScreen(onBack = {}, vm = SymbolDigitViewModel()) }
 
     @Test
-    fun hizOyun() = snap { SymbolDigitPlaying(SymbolDigitTask(SymbolDigitDifficulty.ORTA, Random(1)), onFinished = {}) }
+    fun hizOyun() = snap { SymbolDigitScreen(onBack = {}, vm = SymbolDigitViewModel(Random(1)).apply { start(SymbolDigitDifficulty.ORTA) }) }
 
     @Test
-    fun bellekOyun() = snap { NBackPlaying(NBackTask(NBackDifficulty.ORTA, Random(1)), onFinished = {}) }
+    fun bellekOyun() = snap { NBackScreen(onBack = {}, vm = NBackViewModel(Random(1)).apply { start(NBackDifficulty.ORTA) }) }
 
     @Test
-    fun corsiOyun() = snap { CorsiPlaying(CorsiTask(CorsiDifficulty.ORTA, Random(1)), onFinished = {}) }
+    fun corsiOyun() = snap { CorsiScreen(onBack = {}, vm = CorsiViewModel(Random(1)).apply { start(CorsiDifficulty.ORTA) }) }
 
     @Test
     fun hanoiOyun() = snap {
         // Birkaç hamle yapılmış hâli göster
-        val task = HanoiTask(HanoiDifficulty.ORTA).apply {
-            answer(HanoiMove(0, 1), 0)
-            answer(HanoiMove(0, 2), 0)
-            answer(HanoiMove(1, 2), 0)
+        val vm = HanoiViewModel().apply {
+            start(HanoiDifficulty.ORTA)
+            move(0, 1)
+            move(0, 2)
+            move(1, 2)
         }
-        HanoiPlaying(task, onFinished = {})
+        HanoiScreen(onBack = {}, vm = vm)
     }
 }

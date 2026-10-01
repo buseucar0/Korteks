@@ -20,8 +20,6 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.key
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
@@ -36,8 +34,8 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.buse.korteks.game.CorsiDifficulty
-import com.buse.korteks.game.CorsiTask
 import com.buse.korteks.game.GameReward
 import com.buse.korteks.game.TaskResult
 import kotlinx.coroutines.delay
@@ -53,24 +51,34 @@ private const val BLOCK_SIZE = 0.17f
 private val BLOCK_COLOR = Color(0xFF3949AB)
 private val BLOCK_LIT = Color(0xFFFFEB3B)
 
-private sealed interface CorsiPhase {
-    data object Intro : CorsiPhase
-    data class Playing(val task: CorsiTask) : CorsiPhase
-    data class Finished(val task: CorsiTask, val result: TaskResult, val reward: GameReward? = null) : CorsiPhase
-}
+/** "Doğru/Yanlış" geri bildiriminin ekranda kalma süresi. */
+private const val FEEDBACK_MS = 900L
 
 /**
  * onGameFinished: oyun bittiği AN bir kez çağrılır (ilerleme kaydı). Dönen ödül sonuç ekranında gösterilir.
  * Varsayılan { null }: önizleme ve testlerde kayıt yapılmaz.
  */
 @Composable
-fun CorsiScreen(onBack: () -> Unit, onGameFinished: (TaskResult) -> GameReward? = { null }) {
-    var phase by remember { mutableStateOf<CorsiPhase>(CorsiPhase.Intro) }
-    // Tek geri tuşu dinleyicisi: oyun/sonuç ekranındaysa girişe, girişteyse ana menüye dön
-    BackHandler { if (phase is CorsiPhase.Intro) onBack() else phase = CorsiPhase.Intro }
+fun CorsiScreen(
+    onBack: () -> Unit,
+    onGameFinished: (TaskResult) -> GameReward? = { null },
+    vm: CorsiViewModel = viewModel(),
+) {
+    val state = vm.state
 
-    when (val p = phase) {
-        CorsiPhase.Intro -> TaskIntro(
+    /** Hamleyi uygula; hamle oyunu bitirdiyse (Playing → Finished) ilerlemeyi bir kez kaydet. */
+    fun move(action: () -> Unit) {
+        val wasPlaying = vm.state is CorsiUiState.Playing
+        action()
+        val now = vm.state
+        if (wasPlaying && now is CorsiUiState.Finished) vm.attachReward(onGameFinished(now.result))
+    }
+
+    // Tek geri tuşu dinleyicisi: oyun/sonuç ekranındaysa girişe, girişteyse ana menüye dön
+    BackHandler { if (state is CorsiUiState.Intro) onBack() else vm.backToIntro() }
+
+    when (state) {
+        CorsiUiState.Intro -> TaskIntro(
             emoji = "🧊",
             title = "Uzamsal",
             info = listOf(
@@ -82,50 +90,52 @@ fun CorsiScreen(onBack: () -> Unit, onGameFinished: (TaskResult) -> GameReward? 
             howTo = "Bloklar sırayla yanacak. Bitince aynı sırayla bloklara dokun (\"Tersten\" seviyesinde ters " +
                 "sırayla). Her doğru cevapta dizi bir uzar. Aynı uzunlukta iki kez yanılırsan oyun biter.",
             choices = CorsiDifficulty.entries.map { d ->
-                "${d.title}  ·  ${d.startLength} blokla başla" + (if (d.backward) "  ·  ters sıra" else "") to
-                    { phase = CorsiPhase.Playing(CorsiTask(d)) }
+                "${d.title}  ·  ${d.startLength} blokla başla" + (if (d.backward) "  ·  ters sıra" else "") to { vm.start(d) }
             },
             onBack = onBack,
         )
-        is CorsiPhase.Playing -> key(p.task) {
-            CorsiPlaying(p.task, onFinished = { phase = CorsiPhase.Finished(p.task, it, onGameFinished(it)) })
-        }
-        is CorsiPhase.Finished -> ResultScreen(
-            header = "🧊 CORSI · ${p.task.difficulty.title.uppercase()}",
-            score = p.result.score,
+        is CorsiUiState.Playing -> CorsiPlaying(
+            state,
+            onAnswer = { taps, reactionMs, trialNo -> vm.answer(taps, reactionMs, trialNo) },
+            onNext = { trialNo -> move { vm.next(trialNo) } },
+        )
+        is CorsiUiState.Finished -> ResultScreen(
+            header = "🧊 CORSI · ${state.difficulty.title.uppercase()}",
+            score = state.result.score,
             stats = listOf(
-                "Aralık (span)" to "${p.task.span}",
-                "Doğru" to "${p.result.correct}/${p.result.total}",
-                "Ort. süre" to if (p.result.averageReactionMs > 0) "${formatSeconds(p.result.averageReactionMs)} sn" else "—",
+                "Aralık (span)" to "${state.span}",
+                "Doğru" to "${state.result.correct}/${state.result.total}",
+                "Ort. süre" to if (state.result.averageReactionMs > 0) "${formatSeconds(state.result.averageReactionMs)} sn" else "—",
             ),
-            onReplay = { phase = CorsiPhase.Playing(CorsiTask(p.task.difficulty)) },
-            onMenu = { phase = CorsiPhase.Intro },
-            reward = p.reward,
+            onReplay = { vm.start(state.difficulty) },
+            onMenu = vm::backToIntro,
+            reward = state.reward,
         )
     }
 }
 
+/**
+ * Oyun ekranı. Gösterim aşaması (hangi blok yanıyor) ve dokunulan bloklar bu ekranın geçici durumu;
+ * deneme numarası değişince sıfırlanır. Cevabın sonucu (feedback) ViewModel'de tutulur.
+ */
 @Composable
-internal fun CorsiPlaying(task: CorsiTask, onFinished: (TaskResult) -> Unit) {
-    var trialNo by remember { mutableIntStateOf(0) }
-    var litBlock by remember { mutableStateOf<Int?>(null) }
-    var showing by remember { mutableStateOf(true) }
-    var feedback by remember { mutableStateOf<Boolean?>(null) } // null = yok, true = doğru, false = yanlış
-    var shownLength by remember { mutableIntStateOf(task.currentLength) }
-    var inputStartMs by remember { mutableLongStateOf(0L) }
-    val taps = remember { mutableStateListOf<Int>() }
+internal fun CorsiPlaying(
+    state: CorsiUiState.Playing,
+    onAnswer: (taps: List<Int>, reactionMs: Long, trialNo: Int) -> Unit,
+    onNext: (trialNo: Int) -> Unit,
+) {
+    var litBlock by remember(state.trialNo) { mutableStateOf<Int?>(null) }
+    var showing by remember(state.trialNo) { mutableStateOf(state.feedback == null) }
+    var inputStartMs by remember(state.trialNo) { mutableLongStateOf(0L) }
+    val taps = remember(state.trialNo) { mutableStateListOf<Int>() }
     val scope = rememberCoroutineScope()
 
     // Gösterim aşaması: blokları sırayla yak. delay() burada bir RTOS'taki vTaskDelay gibi:
     // bu korutin (coroutine) bekler ama arayüz donmaz.
-    LaunchedEffect(trialNo) {
-        if (task.isFinished) return@LaunchedEffect
-        taps.clear()
-        feedback = null
-        showing = true
-        shownLength = task.currentLength
+    LaunchedEffect(state.trialNo) {
+        if (state.feedback != null) return@LaunchedEffect
         delay(800)
-        for (block in task.currentQuestion()) {
+        for (block in state.sequence) {
             litBlock = block
             delay(700)
             litBlock = null
@@ -135,39 +145,42 @@ internal fun CorsiPlaying(task: CorsiTask, onFinished: (TaskResult) -> Unit) {
         inputStartMs = System.currentTimeMillis()
     }
 
+    // Cevap verildi: geri bildirimi kısa süre göster, sonra sonraki denemeye geç
+    LaunchedEffect(state.trialNo, state.feedback) {
+        if (state.feedback == null) return@LaunchedEffect
+        delay(FEEDBACK_MS)
+        onNext(state.trialNo)
+    }
+
     fun onTap(block: Int) {
-        if (showing || feedback != null || task.isFinished) return
+        if (showing || state.feedback != null) return
         taps += block
         scope.launch {
             litBlock = block
             delay(200)
             if (litBlock == block) litBlock = null
         }
-        if (taps.size == shownLength) {
-            feedback = task.answer(taps.toList(), System.currentTimeMillis() - inputStartMs)
-            scope.launch {
-                delay(900)
-                if (task.isFinished) onFinished(task.result()) else trialNo++
-            }
+        if (taps.size == state.length) {
+            onAnswer(taps.toList(), System.currentTimeMillis() - inputStartMs, state.trialNo)
         }
     }
 
     Column(Modifier.fillMaxSize().padding(20.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-        ProgressHeader("Dizi uzunluğu: $shownLength  ·  En iyi: ${task.span}", null)
+        ProgressHeader("Dizi uzunluğu: ${state.length}  ·  En iyi: ${state.span}", null)
         Spacer(Modifier.height(24.dp))
         Text(
-            when (feedback) {
+            when (state.feedback) {
                 true -> "✓ Doğru!"
                 false -> "✗ Yanlış"
                 null -> if (showing) {
                     "İzle…"
                 } else {
-                    (if (task.difficulty.backward) "Tersten dokun" else "Aynı sırayla dokun") + "  (${taps.size}/$shownLength)"
+                    (if (state.backward) "Tersten dokun" else "Aynı sırayla dokun") + "  (${taps.size}/${state.length})"
                 }
             },
             fontSize = 26.sp,
             fontWeight = FontWeight.Bold,
-            color = when (feedback) {
+            color = when (state.feedback) {
                 true -> Color(0xFF66BB6A)
                 false -> Color(0xFFF44336)
                 null -> MaterialTheme.colorScheme.onSurface

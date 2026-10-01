@@ -15,23 +15,16 @@ import androidx.compose.ui.test.click
 import androidx.compose.ui.test.performTouchInput
 import com.buse.korteks.data.MatrixPuzzleLoader
 import com.buse.korteks.game.CorsiDifficulty
-import com.buse.korteks.game.CorsiTask
 import com.buse.korteks.game.HanoiDifficulty
-import com.buse.korteks.game.HanoiTask
 import com.buse.korteks.game.MatrixDifficulty
-import com.buse.korteks.game.MatrixTask
 import com.buse.korteks.game.NBackDifficulty
-import com.buse.korteks.game.NBackTask
 import com.buse.korteks.game.StroopDifficulty
 import com.buse.korteks.game.SymbolDigitDifficulty
-import com.buse.korteks.game.SymbolDigitTask
 import com.buse.korteks.game.GameReward
 import com.buse.korteks.game.PlayerProgress
 import com.buse.korteks.game.TaskResult
 import kotlin.random.Random
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertNotNull
-import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -148,47 +141,49 @@ class GameplayTest {
     @Test
     fun `matris - dogru secenege basan oyuncu yuzde yuz alir`() {
         val puzzles = MatrixPuzzleLoader.load(RuntimeEnvironment.getApplication())
-        val task = MatrixTask(puzzles, MatrixDifficulty.ORTA, Random(4))
-        var result: TaskResult? = null
-        start { MatrixPlaying(task) { result = it } }
+        val vm = MatrixViewModel(Random(4))
+        vm.start(puzzles, MatrixDifficulty.ORTA)
+        start { MatrixScreen(onBack = {}, vm = vm) }
 
-        while (result == null) {
-            tap(hasTestTag("secenek_${task.currentQuestion().correctIndex}"))
+        while (vm.state is MatrixUiState.Playing) {
+            tap(hasTestTag("secenek_${(vm.state as MatrixUiState.Playing).question.correctIndex}"))
         }
-        assertEquals(100, result!!.accuracyPercent)
+        assertEquals(100, (vm.state as MatrixUiState.Finished).result.accuracyPercent)
     }
 
     // ---------------------------------------------------------------- Hız
 
     @Test
     fun `hiz - dogru ve yanlis cevaplar sayilir, sure dolunca biter`() {
-        val task = SymbolDigitTask(SymbolDigitDifficulty.ORTA, Random(5))
-        var result: TaskResult? = null
-        start { SymbolDigitPlaying(task) { result = it } }
+        val vm = SymbolDigitViewModel(Random(5))
+        vm.start(SymbolDigitDifficulty.ORTA)
+        start { SymbolDigitScreen(onBack = {}, vm = vm) }
+        fun playing() = vm.state as SpeedUiState.Playing
+        fun digitOf(p: SpeedUiState.Playing) = p.key.first { it.first == p.symbol }.second
 
         repeat(10) {
             advance(300)
-            tap(button("${task.key.getValue(task.currentQuestion())}"))
+            tap(button("${digitOf(playing())}"))
         }
-        val wrong = task.key.getValue(task.currentQuestion()) % 9 + 1
-        tap(button("$wrong"))
-        assertNull(result)
+        tap(button("${digitOf(playing()) % 9 + 1}")) // yanlış rakam
+        assertTrue(vm.state is SpeedUiState.Playing)
 
         advance(60_000)
-        assertNotNull(result)
-        assertEquals(10, result!!.correct)
-        assertEquals(11, result!!.total)
-        assertEquals(950, result!!.score)
-        assertTrue("tepki süresi ölçülmeli", result!!.averageReactionMs in 250..400)
+        val result = (vm.state as SpeedUiState.Finished).result
+        assertEquals(10, result.correct)
+        assertEquals(11, result.total)
+        assertEquals(950, result.score)
+        assertTrue("tepki süresi ölçülmeli", result.averageReactionMs in 250..400)
     }
 
     // ---------------------------------------------------------------- N-Back
 
     @Test
     fun `nback - uyaran 1 sn sonra kaybolur, ilk N adimda butonlar kapali`() {
-        val task = NBackTask(NBackDifficulty.ORTA, Random(6))
-        start { NBackPlaying(task) {} }
-        val letter = task.currentQuestion().letter.toString()
+        val vm = NBackViewModel(Random(6))
+        vm.start(NBackDifficulty.ORTA)
+        start { NBackScreen(onBack = {}, vm = vm) }
+        val letter = (vm.state as NBackUiState.Playing).stimulus.letter.toString()
         assertText(letter)
         rule.onNode(button("📍 KONUM")).assertIsNotEnabled()
         advance(1_100)
@@ -197,11 +192,12 @@ class GameplayTest {
 
     @Test
     fun `nback - eslesmelere dogru basan oyuncu yuzde yuz alir`() {
-        val task = NBackTask(NBackDifficulty.ORTA, Random(7))
-        var result: TaskResult? = null
-        start { NBackPlaying(task) { result = it } }
+        val vm = NBackViewModel(Random(7))
+        vm.start(NBackDifficulty.ORTA)
+        start { NBackScreen(onBack = {}, vm = vm) }
+        val task = vm.task!!
 
-        while (result == null) {
+        while (vm.state is NBackUiState.Playing) {
             val step = task.progress
             if (task.isPositionMatch(step)) tap(button("📍 KONUM"))
             if (task.isLetterMatch(step)) tap(button("🔤 HARF"))
@@ -209,8 +205,9 @@ class GameplayTest {
             while (task.progress == step) advance(100)
             frame()
         }
-        assertEquals(100, result!!.accuracyPercent)
-        assertEquals(0, task.falseAlarms)
+        val finished = vm.state as NBackUiState.Finished
+        assertEquals(100, finished.result.accuracyPercent)
+        assertEquals(0, finished.falseAlarms)
     }
 
     // ---------------------------------------------------------------- Corsi
@@ -220,15 +217,17 @@ class GameplayTest {
 
     @Test
     fun `corsi - gosterim sirasinda dokunma sayilmaz, dogru sira diziyi uzatir`() {
-        val task = CorsiTask(CorsiDifficulty.ORTA, Random(8))
-        start { CorsiPlaying(task) {} }
+        val vm = CorsiViewModel(Random(8))
+        vm.start(CorsiDifficulty.ORTA)
+        start { CorsiScreen(onBack = {}, vm = vm) }
 
         assertText("İzle…")
         tap(hasTestTag("blok_0")) // gösterim sırasında: yok sayılmalı
         waitForShow(3)
         assertText("Aynı sırayla dokun  (0/3)")
 
-        task.expectedAnswer().forEach { tap(hasTestTag("blok_$it")) }
+        vm.task!!.expectedAnswer().forEach { tap(hasTestTag("blok_$it")) }
+        advance(100) // son dokunuşta iki durum birden değişiyor, ekrana bir kare sonra yansır
         assertText("✓ Doğru!")
         advance(1_000)
         assertText("Dizi uzunluğu: 4  ·  En iyi: 3")
@@ -236,18 +235,18 @@ class GameplayTest {
 
     @Test
     fun `corsi - ayni uzunlukta iki yanlis oyunu bitirir`() {
-        val task = CorsiTask(CorsiDifficulty.ORTA, Random(9))
-        var result: TaskResult? = null
-        start { CorsiPlaying(task) { result = it } }
+        val vm = CorsiViewModel(Random(9))
+        vm.start(CorsiDifficulty.ORTA)
+        start { CorsiScreen(onBack = {}, vm = vm) }
 
         repeat(2) {
             waitForShow(3)
-            task.expectedAnswer().reversed().forEach { tap(hasTestTag("blok_$it")) } // ters sıra = yanlış
+            vm.task!!.expectedAnswer().reversed().forEach { tap(hasTestTag("blok_$it")) } // ters sıra = yanlış
+            advance(100)
             assertText("✗ Yanlış")
             advance(1_000)
         }
-        assertNotNull(result)
-        assertEquals(0, result!!.correct)
+        assertEquals(0, (vm.state as CorsiUiState.Finished).result.correct)
     }
 
     // ---------------------------------------------------------------- Hanoi
@@ -259,45 +258,47 @@ class GameplayTest {
         frame()
     }
 
+    private fun hanoi(): HanoiViewModel {
+        val vm = HanoiViewModel()
+        vm.start(HanoiDifficulty.KOLAY)
+        start { HanoiScreen(onBack = {}, vm = vm) }
+        return vm
+    }
+
     @Test
     fun `hanoi - kural disi hamle uygulanmaz`() {
-        val task = HanoiTask(HanoiDifficulty.KOLAY)
-        start { HanoiPlaying(task) {} }
-
+        val vm = hanoi()
         tapPeg(0)
         assertText("Nereye? Hedef çubuğa dokun")
         tapPeg(1) // küçük disk → orta: geçerli
         tapPeg(0)
         tapPeg(1) // orta boy disk küçüğün üstüne: kural dışı
-        assertEquals(1, task.moves)
-        assertEquals(listOf(listOf(3, 2), listOf(1), emptyList()), task.currentQuestion())
+        val playing = vm.state as HanoiUiState.Playing
+        assertEquals(1, playing.moves)
+        assertEquals(listOf(listOf(3, 2), listOf(1), emptyList()), playing.pegs)
     }
 
     @Test
     fun `hanoi - dokunarak optimal cozum tam puan verir`() {
-        val task = HanoiTask(HanoiDifficulty.KOLAY)
-        var result: TaskResult? = null
-        start { HanoiPlaying(task) { result = it } }
-
+        val vm = hanoi()
         val optimal = listOf(0 to 2, 0 to 1, 2 to 1, 0 to 2, 1 to 0, 1 to 2, 0 to 2)
         for ((from, to) in optimal) {
             advance(1_000)
             tapPeg(from)
             tapPeg(to)
         }
-        assertNotNull(result)
-        assertTrue(task.isSolved)
-        assertEquals(7, task.moves)
-        assertEquals(3000, result!!.score)
+        val finished = vm.state as HanoiUiState.Finished
+        assertTrue(finished.solved)
+        assertEquals(7, finished.moves)
+        assertEquals(3000, finished.result.score)
     }
 
     @Test
     fun `hanoi - sure dolarsa oyun biter`() {
-        val task = HanoiTask(HanoiDifficulty.KOLAY)
-        var result: TaskResult? = null
-        start { HanoiPlaying(task) { result = it } }
+        val vm = hanoi()
         advance(91_000)
-        assertNotNull(result)
-        assertEquals(0, result!!.score)
+        val finished = vm.state as HanoiUiState.Finished
+        assertEquals(false, finished.solved)
+        assertEquals(0, finished.result.score)
     }
 }

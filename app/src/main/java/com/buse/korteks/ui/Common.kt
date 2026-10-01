@@ -55,22 +55,33 @@ fun neutralButtonColors(): ButtonColors =
 fun formatSeconds(ms: Long): String = "%.1f".format(ms / 1000.0)
 
 /**
- * Soru başına süre sayacı (game loop). withFrameMillis her ekran karesinde (~60 Hz, vsync) bir kez döner.
+ * Süre sayacı (game loop). withFrameMillis her ekran karesinde (~60 Hz, vsync) bir kez döner.
  * Gömülüdeki periyodik timer kesmesi gibi: her tick'te geçen süreyi güncelle, sınır aşılınca onTimeout çağır.
- * trialKey değişince sayaç iptal edilip sıfırdan başlar.
+ * trialKey değişince sayaç iptal edilip yeniden başlar.
  *
- * DİKKAT: onTimeout içinde "bu hâlâ aynı soru mu?" kontrolü yap. Aynı karede hem tıklama hem timeout
- * gelebilir (yarış durumu, race condition), eski sayaç yeni soruyu yanlışlıkla atlatmasın.
+ * initialElapsedMs + onTick: oyun boyu süren sayaçlar (Hız, Hanoi) için. Geçen süre her karede onTick ile
+ * ViewModel'e yazılır; ekran yeniden kurulunca sayaç sıfırdan değil kaldığı yerden başlar.
+ *
+ * DİKKAT: Aynı karede hem tıklama hem timeout gelebilir (yarış durumu, race condition).
+ * onTimeout'u alan taraf "bu hâlâ aynı soru mu?" kontrolü yapmalı (ViewModel'lerde numara kontrolü).
  */
 @Composable
-fun rememberTrialClock(trialKey: Any, limitMs: Long, onTimeout: () -> Unit): State<Long> {
+fun rememberTrialClock(
+    trialKey: Any,
+    limitMs: Long,
+    initialElapsedMs: Long = 0L,
+    onTick: (elapsedMs: Long) -> Unit = {},
+    onTimeout: () -> Unit,
+): State<Long> {
     val elapsed = remember { mutableLongStateOf(0L) }
     val latestOnTimeout by rememberUpdatedState(onTimeout)
+    val latestOnTick by rememberUpdatedState(onTick)
     LaunchedEffect(trialKey) {
-        elapsed.longValue = 0
-        val startMs = withFrameMillis { it }
+        elapsed.longValue = initialElapsedMs
+        val startMs = withFrameMillis { it } - initialElapsedMs
         while (true) {
             elapsed.longValue = withFrameMillis { it } - startMs
+            latestOnTick(elapsed.longValue)
             if (elapsed.longValue >= limitMs) {
                 latestOnTimeout()
                 break
