@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -120,22 +121,28 @@ internal fun MatrixPlaying(
         ProgressHeader("${state.number} / ${state.total}", 1f - elapsedMs.toFloat() / state.timeLimitMs)
         Spacer(Modifier.height(20.dp))
 
-        // 3x3 tablo
-        Column(Modifier.fillMaxWidth(0.9f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-            q.cells.chunked(3).forEach { row ->
-                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    row.forEach { figure ->
-                        Box(
-                            Modifier
-                                .weight(1f)
-                                .aspectRatio(1f)
-                                .border(2.dp, Color(0xFF444444), RoundedCornerShape(8.dp)),
-                            contentAlignment = Alignment.Center,
-                        ) {
-                            if (figure == null) {
-                                Text("?", fontSize = 40.sp, fontWeight = FontWeight.Black, color = MaterialTheme.colorScheme.primary)
-                            } else {
-                                FigureCanvas(figure)
+        // 3x3 tablo: kalan alana sığan en büyük kare (genişlik ya da yükseklikten küçük olanı).
+        // matchHeightConstraintsFirst: önce yüksekliğe sığdırmayı dener → yatay tablette taşmaz.
+        Box(Modifier.weight(1f).fillMaxWidth(0.9f), contentAlignment = Alignment.Center) {
+            Column(
+                Modifier.aspectRatio(1f, matchHeightConstraintsFirst = true),
+                verticalArrangement = Arrangement.spacedBy(6.dp),
+            ) {
+                q.cells.chunked(3).forEach { row ->
+                    Row(Modifier.weight(1f), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        row.forEach { figure ->
+                            Box(
+                                Modifier
+                                    .weight(1f)
+                                    .fillMaxHeight()
+                                    .border(2.dp, Color(0xFF444444), RoundedCornerShape(8.dp)),
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                if (figure == null) {
+                                    Text("?", fontSize = 40.sp, fontWeight = FontWeight.Black, color = MaterialTheme.colorScheme.primary)
+                                } else {
+                                    FigureCanvas(figure)
+                                }
                             }
                         }
                     }
@@ -143,7 +150,7 @@ internal fun MatrixPlaying(
             }
         }
 
-        Spacer(Modifier.weight(1f))
+        Spacer(Modifier.height(16.dp))
 
         // Seçenekler: 4 tane → 2'li satırlar, 6 tane → 3'lü satırlar
         val perRow = if (q.options.size <= 4) 2 else 3

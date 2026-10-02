@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -136,16 +137,17 @@ internal fun NBackPlaying(
             textAlign = TextAlign.Center,
         )
 
-        Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
-            Column(Modifier.fillMaxWidth(0.85f), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        // Izgara: kalan alana sığan en büyük kare (yatay tablette butonların üstüne taşmasın)
+        Box(Modifier.weight(1f).fillMaxWidth(0.85f).padding(vertical = 12.dp), contentAlignment = Alignment.Center) {
+            Column(Modifier.aspectRatio(1f, matchHeightConstraintsFirst = true), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 for (row in 0..2) {
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Row(Modifier.weight(1f), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         for (col in 0..2) {
                             val active = visible && state.stimulus.position == row * 3 + col
                             Box(
                                 Modifier
                                     .weight(1f)
-                                    .aspectRatio(1f)
+                                    .fillMaxHeight()
                                     .background(
                                         if (active) MaterialTheme.colorScheme.primary else Color(0xFF2C2C2C),
                                         RoundedCornerShape(12.dp),

@@ -186,22 +186,22 @@ internal fun CorsiPlaying(
                 null -> MaterialTheme.colorScheme.onSurface
             },
         )
-        Spacer(Modifier.weight(1f))
-
-        // BoxWithConstraints: alanın gerçek boyutunu (maxWidth) verir, bloklar buna göre konumlanır
-        BoxWithConstraints(Modifier.fillMaxWidth().aspectRatio(1f)) {
-            val side = maxWidth * BLOCK_SIZE
-            BLOCK_POSITIONS.forEachIndexed { index, pos ->
-                Box(
-                    Modifier
-                        .offset(x = maxWidth * pos.x, y = maxHeight * pos.y)
-                        .size(side)
-                        .background(if (litBlock == index) BLOCK_LIT else BLOCK_COLOR, RoundedCornerShape(10.dp))
-                        .clickable { onTap(index) }
-                        .testTag("blok_$index"),
-                )
+        // Blok alanı: kalan alana sığan en büyük kare (yatay tablette ekrandan taşmasın).
+        // BoxWithConstraints: alanın gerçek boyutunu (maxWidth) verir, bloklar buna göre konumlanır.
+        Box(Modifier.weight(1f).fillMaxWidth().padding(vertical = 16.dp), contentAlignment = Alignment.Center) {
+            BoxWithConstraints(Modifier.aspectRatio(1f, matchHeightConstraintsFirst = true)) {
+                val side = maxWidth * BLOCK_SIZE
+                BLOCK_POSITIONS.forEachIndexed { index, pos ->
+                    Box(
+                        Modifier
+                            .offset(x = maxWidth * pos.x, y = maxHeight * pos.y)
+                            .size(side)
+                            .background(if (litBlock == index) BLOCK_LIT else BLOCK_COLOR, RoundedCornerShape(10.dp))
+                            .clickable { onTap(index) }
+                            .testTag("blok_$index"),
+                    )
+                }
             }
         }
-        Spacer(Modifier.weight(1f))
     }
 }
