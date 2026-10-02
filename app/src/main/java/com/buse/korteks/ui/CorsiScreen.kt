@@ -36,8 +36,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.buse.korteks.game.CorsiDifficulty
+import com.buse.korteks.game.GameRecord
 import com.buse.korteks.game.GameReward
-import com.buse.korteks.game.TaskResult
+import com.buse.korteks.game.GameType
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -56,12 +57,14 @@ private const val FEEDBACK_MS = 900L
 
 /**
  * onGameFinished: oyun bittiği AN bir kez çağrılır (ilerleme kaydı). Dönen ödül sonuç ekranında gösterilir.
+ * bestScore: zorluk başına rekor (giriş ekranındaki zorluk butonlarında gösterilir).
  * Varsayılan { null }: önizleme ve testlerde kayıt yapılmaz.
  */
 @Composable
 fun CorsiScreen(
     onBack: () -> Unit,
-    onGameFinished: (TaskResult) -> GameReward? = { null },
+    onGameFinished: (GameRecord) -> GameReward? = { null },
+    bestScore: (difficulty: String) -> Int? = { null },
     vm: CorsiViewModel = viewModel(),
 ) {
     val state = vm.state
@@ -71,7 +74,9 @@ fun CorsiScreen(
         val wasPlaying = vm.state is CorsiUiState.Playing
         action()
         val now = vm.state
-        if (wasPlaying && now is CorsiUiState.Finished) vm.attachReward(onGameFinished(now.result))
+        if (wasPlaying && now is CorsiUiState.Finished) {
+            vm.attachReward(onGameFinished(GameRecord(GameType.CORSI, now.difficulty.name, now.result)))
+        }
     }
 
     // Tek geri tuşu dinleyicisi: oyun/sonuç ekranındaysa girişe, girişteyse ana menüye dön
@@ -90,7 +95,7 @@ fun CorsiScreen(
             howTo = "Bloklar sırayla yanacak. Bitince aynı sırayla bloklara dokun (\"Tersten\" seviyesinde ters " +
                 "sırayla). Her doğru cevapta dizi bir uzar. Aynı uzunlukta iki kez yanılırsan oyun biter.",
             choices = CorsiDifficulty.entries.map { d ->
-                "${d.title}  ·  ${d.startLength} blokla başla" + (if (d.backward) "  ·  ters sıra" else "") to { vm.start(d) }
+                withBest("${d.title}  ·  ${d.startLength} blokla başla" + (if (d.backward) "  ·  ters sıra" else ""), bestScore(d.name)) to { vm.start(d) }
             },
             onBack = onBack,
         )

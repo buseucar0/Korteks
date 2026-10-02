@@ -29,19 +29,22 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.buse.korteks.game.GameRecord
 import com.buse.korteks.game.GameReward
+import com.buse.korteks.game.GameType
 import com.buse.korteks.game.HanoiDifficulty
 import com.buse.korteks.game.InkColor
-import com.buse.korteks.game.TaskResult
 
 /**
  * onGameFinished: oyun bittiği AN bir kez çağrılır (ilerleme kaydı). Dönen ödül sonuç ekranında gösterilir.
+ * bestScore: zorluk başına rekor (giriş ekranındaki zorluk butonlarında gösterilir).
  * Varsayılan { null }: önizleme ve testlerde kayıt yapılmaz.
  */
 @Composable
 fun HanoiScreen(
     onBack: () -> Unit,
-    onGameFinished: (TaskResult) -> GameReward? = { null },
+    onGameFinished: (GameRecord) -> GameReward? = { null },
+    bestScore: (difficulty: String) -> Int? = { null },
     vm: HanoiViewModel = viewModel(),
 ) {
     val state = vm.state
@@ -51,7 +54,9 @@ fun HanoiScreen(
         val wasPlaying = vm.state is HanoiUiState.Playing
         action()
         val now = vm.state
-        if (wasPlaying && now is HanoiUiState.Finished) vm.attachReward(onGameFinished(now.result))
+        if (wasPlaying && now is HanoiUiState.Finished) {
+            vm.attachReward(onGameFinished(GameRecord(GameType.HANOI, now.difficulty.name, now.result)))
+        }
     }
 
     // Tek geri tuşu dinleyicisi: oyun/sonuç ekranındaysa girişe, girişteyse ana menüye dön
@@ -69,7 +74,7 @@ fun HanoiScreen(
             howTo = "Bütün diskleri soldaki çubuktan sağdaki çubuğa taşı. Önce diski almak istediğin çubuğa, sonra " +
                 "koymak istediğin çubuğa dokun. Kurallar: tek seferde bir disk, büyük disk küçüğün üstüne konamaz.",
             choices = HanoiDifficulty.entries.map { d ->
-                "${d.title}  ·  ${d.disks} disk  ·  en az ${(1 shl d.disks) - 1} hamle  ·  ${d.timeLimitMs / 1000} sn" to
+                withBest("${d.title}  ·  ${d.disks} disk  ·  en az ${(1 shl d.disks) - 1} hamle  ·  ${d.timeLimitMs / 1000} sn", bestScore(d.name)) to
                     { vm.start(d) }
             },
             onBack = onBack,

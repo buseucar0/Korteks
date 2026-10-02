@@ -33,22 +33,25 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.buse.korteks.game.GameRecord
 import com.buse.korteks.game.GameReward
+import com.buse.korteks.game.GameType
 import com.buse.korteks.game.NBackDifficulty
 import com.buse.korteks.game.NBackResponse
-import com.buse.korteks.game.TaskResult
 
 /** Uyaran her adımın başında bu kadar süre görünür, sonra kaybolur (hafızada tutulmalı). */
 private const val STIMULUS_VISIBLE_MS = 1000L
 
 /**
  * onGameFinished: oyun bittiği AN bir kez çağrılır (ilerleme kaydı). Dönen ödül sonuç ekranında gösterilir.
+ * bestScore: zorluk başına rekor (giriş ekranındaki zorluk butonlarında gösterilir).
  * Varsayılan { null }: önizleme ve testlerde kayıt yapılmaz.
  */
 @Composable
 fun NBackScreen(
     onBack: () -> Unit,
-    onGameFinished: (TaskResult) -> GameReward? = { null },
+    onGameFinished: (GameRecord) -> GameReward? = { null },
+    bestScore: (difficulty: String) -> Int? = { null },
     vm: NBackViewModel = viewModel(),
 ) {
     val state = vm.state
@@ -58,7 +61,9 @@ fun NBackScreen(
         val wasPlaying = vm.state is NBackUiState.Playing
         action()
         val now = vm.state
-        if (wasPlaying && now is NBackUiState.Finished) vm.attachReward(onGameFinished(now.result))
+        if (wasPlaying && now is NBackUiState.Finished) {
+            vm.attachReward(onGameFinished(GameRecord(GameType.NBACK, now.difficulty.name, now.result)))
+        }
     }
 
     // Tek geri tuşu dinleyicisi: oyun/sonuç ekranındaysa girişe, girişteyse ana menüye dön
@@ -78,7 +83,7 @@ fun NBackScreen(
                 "KONUM'a, harf N adım öncekiyle aynıysa HARF'e bas. İkisi de aynıysa ikisine de bas, " +
                 "hiçbiri değilse hiçbir şeye basma.",
             choices = NBackDifficulty.entries.map { d ->
-                "${d.title}  ·  ${d.n + d.scoredSteps} adım  ·  ${formatSeconds(d.stepMs)} sn/adım" to { vm.start(d) }
+                withBest("${d.title}  ·  ${d.n + d.scoredSteps} adım  ·  ${formatSeconds(d.stepMs)} sn/adım", bestScore(d.name)) to { vm.start(d) }
             },
             onBack = onBack,
         )

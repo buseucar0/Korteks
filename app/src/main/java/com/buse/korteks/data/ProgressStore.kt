@@ -17,16 +17,22 @@ class ProgressStore(context: Context) {
         streakDays = prefs.getInt(KEY_STREAK, 0),
         longestStreak = prefs.getInt(KEY_LONGEST, 0),
         lastPlayedDate = prefs.getString(KEY_LAST_DAY, null)?.let(LocalDate::parse),
+        // Rekorlar "rekor_" ön ekli ayrı anahtarlarda: rekor_STROOP_ZOR = 2140
+        bestScores = prefs.all
+            .filterKeys { it.startsWith(BEST_PREFIX) }
+            .mapNotNull { (key, value) -> (value as? Int)?.let { key.removePrefix(BEST_PREFIX) to it } }
+            .toMap(),
     )
 
     /** apply(): diske arka planda yazar, arayüzü bekletmez. */
     fun save(progress: PlayerProgress) {
-        prefs.edit()
+        val editor = prefs.edit()
             .putInt(KEY_XP, progress.totalXp)
             .putInt(KEY_STREAK, progress.streakDays)
             .putInt(KEY_LONGEST, progress.longestStreak)
             .putString(KEY_LAST_DAY, progress.lastPlayedDate?.toString()) // ISO biçimi: 2026-10-01
-            .apply()
+        progress.bestScores.forEach { (key, score) -> editor.putInt(BEST_PREFIX + key, score) }
+        editor.apply()
     }
 
     private companion object {
@@ -34,5 +40,6 @@ class ProgressStore(context: Context) {
         const val KEY_STREAK = "seri_gun"
         const val KEY_LONGEST = "en_uzun_seri"
         const val KEY_LAST_DAY = "son_oyun_gunu"
+        const val BEST_PREFIX = "rekor_"
     }
 }

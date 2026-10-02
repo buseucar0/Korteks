@@ -40,17 +40,20 @@ import com.buse.korteks.data.MatrixPuzzleLoader
 import com.buse.korteks.game.Figure
 import com.buse.korteks.game.MatrixDifficulty
 import com.buse.korteks.game.Shape
+import com.buse.korteks.game.GameRecord
 import com.buse.korteks.game.GameReward
-import com.buse.korteks.game.TaskResult
+import com.buse.korteks.game.GameType
 
 /**
  * onGameFinished: oyun bittiği AN bir kez çağrılır (ilerleme kaydı). Dönen ödül sonuç ekranında gösterilir.
+ * bestScore: zorluk başına rekor (giriş ekranındaki zorluk butonlarında gösterilir).
  * Varsayılan { null }: önizleme ve testlerde kayıt yapılmaz.
  */
 @Composable
 fun MatrixScreen(
     onBack: () -> Unit,
-    onGameFinished: (TaskResult) -> GameReward? = { null },
+    onGameFinished: (GameRecord) -> GameReward? = { null },
+    bestScore: (difficulty: String) -> Int? = { null },
     vm: MatrixViewModel = viewModel(),
 ) {
     val context = LocalContext.current
@@ -63,7 +66,9 @@ fun MatrixScreen(
         val wasPlaying = vm.state is MatrixUiState.Playing
         action()
         val now = vm.state
-        if (wasPlaying && now is MatrixUiState.Finished) vm.attachReward(onGameFinished(now.result))
+        if (wasPlaying && now is MatrixUiState.Finished) {
+            vm.attachReward(onGameFinished(GameRecord(GameType.MATRIX, now.difficulty.name, now.result)))
+        }
     }
 
     // Tek geri tuşu dinleyicisi: oyun/sonuç ekranındaysa girişe, girişteyse ana menüye dön
@@ -82,7 +87,7 @@ fun MatrixScreen(
             howTo = "3x3 tablodaki şekiller satır ve sütunlarda bir kurala göre değişir (şekil, renk, adet, açı). " +
                 "Kuralı bul ve sağ alttaki eksik hücreye uyan seçeneği seç.",
             choices = MatrixDifficulty.entries.map { d ->
-                "${d.title}  ·  ${d.puzzleCount} bulmaca  ·  ${d.optionCount} seçenek  ·  ${d.timeLimitMs / 1000} sn" to
+                withBest("${d.title}  ·  ${d.puzzleCount} bulmaca  ·  ${d.optionCount} seçenek  ·  ${d.timeLimitMs / 1000} sn", bestScore(d.name)) to
                     { vm.start(puzzles, d) }
             },
             onBack = onBack,

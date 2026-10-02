@@ -20,7 +20,13 @@ class ProgressStoreTest {
 
     @Test
     fun `kaydedilen ilerleme yeni bir nesneyle aynen geri okunur`() {
-        val p = PlayerProgress(totalXp = 1234, streakDays = 5, longestStreak = 9, lastPlayedDate = LocalDate.of(2026, 10, 1))
+        val p = PlayerProgress(
+            totalXp = 1234,
+            streakDays = 5,
+            longestStreak = 9,
+            lastPlayedDate = LocalDate.of(2026, 10, 1),
+            bestScores = mapOf("STROOP_ZOR" to 2140, "HANOI_KOLAY" to 3000),
+        )
         ProgressStore(context).save(p)
         assertEquals(p, ProgressStore(context).load()) // uygulama yeniden açılmış gibi
     }

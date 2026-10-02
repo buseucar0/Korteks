@@ -31,6 +31,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.buse.korteks.game.GameReward
@@ -142,7 +143,7 @@ fun TaskIntro(
         Text("Zorluk seç", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
         choices.forEach { (label, onClick) ->
             Button(onClick = onClick, modifier = Modifier.fillMaxWidth().height(64.dp)) {
-                Text(label, fontSize = 16.sp)
+                Text(label, fontSize = 16.sp, textAlign = TextAlign.Center)
             }
         }
     }
@@ -175,6 +176,15 @@ fun ResultScreen(
                 Spacer(Modifier.height(8.dp))
                 Text("🎉 Seviye ${reward.levelAfter}!", fontSize = 36.sp, fontWeight = FontWeight.Black, color = Color(0xFFFFEB3B))
             }
+            Spacer(Modifier.height(8.dp))
+            when {
+                reward.isNewBest -> Text("🏆 Yeni rekor!", fontSize = 28.sp, fontWeight = FontWeight.Black, color = Color(0xFFFFB300))
+                reward.previousBest != null -> Text(
+                    "Rekor: ${reward.previousBest}",
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
         }
         Spacer(Modifier.height(40.dp))
 
@@ -205,6 +215,9 @@ private fun StatBox(label: String, value: String, modifier: Modifier = Modifier)
         }
     }
 }
+
+/** Zorluk butonu metni: rekor varsa ikinci satırda gösterilir. */
+fun withBest(label: String, best: Int?): String = if (best == null) label else "$label\n🏆 Rekor: $best"
 
 /** Ortalama tepki süresi: hiç ölçüm yoksa "—". */
 fun reactionText(ms: Long): String = if (ms <= 0) "—" else "$ms ms"

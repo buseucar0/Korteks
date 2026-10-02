@@ -11,8 +11,9 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.buse.korteks.game.GameRecord
 import com.buse.korteks.game.GameReward
-import com.buse.korteks.game.TaskResult
+import com.buse.korteks.game.GameType
 import com.buse.korteks.ui.AppTheme
 import com.buse.korteks.ui.CorsiScreen
 import com.buse.korteks.ui.HanoiScreen
@@ -39,7 +40,8 @@ class MainActivity : ComponentActivity() {
                 // Seviye/seri: tüm ekranların paylaştığı tek ViewModel (Activity'ye bağlı).
                 // Her oyun bittiği an record bir kez çağrılır, dönen ödül sonuç ekranında gösterilir.
                 val progressVm: ProgressViewModel = viewModel()
-                val record: (TaskResult) -> GameReward = { result -> progressVm.recordGame(result.score) }
+                val record: (GameRecord) -> GameReward = { progressVm.recordGame(it) }
+                fun best(game: GameType): (String) -> Int? = { difficulty -> progressVm.bestScore(game, difficulty) }
 
                 // Geri tuşunu her oyun ekranı kendisi yönetir (oyun → giriş → ana menü).
                 // Ana menüdeyken dinleyici yok: sistem uygulamayı kapatır.
@@ -53,12 +55,12 @@ class MainActivity : ComponentActivity() {
                             streak = progressVm.currentStreak(),
                             longestStreak = progressVm.progress.longestStreak,
                         )
-                        Screen.STROOP -> StroopScreen(onBack = goHome, onGameFinished = record)
-                        Screen.MATRIX -> MatrixScreen(onBack = goHome, onGameFinished = record)
-                        Screen.NBACK -> NBackScreen(onBack = goHome, onGameFinished = record)
-                        Screen.SPEED -> SymbolDigitScreen(onBack = goHome, onGameFinished = record)
-                        Screen.CORSI -> CorsiScreen(onBack = goHome, onGameFinished = record)
-                        Screen.HANOI -> HanoiScreen(onBack = goHome, onGameFinished = record)
+                        Screen.STROOP -> StroopScreen(onBack = goHome, onGameFinished = record, bestScore = best(GameType.STROOP))
+                        Screen.MATRIX -> MatrixScreen(onBack = goHome, onGameFinished = record, bestScore = best(GameType.MATRIX))
+                        Screen.NBACK -> NBackScreen(onBack = goHome, onGameFinished = record, bestScore = best(GameType.NBACK))
+                        Screen.SPEED -> SymbolDigitScreen(onBack = goHome, onGameFinished = record, bestScore = best(GameType.SPEED))
+                        Screen.CORSI -> CorsiScreen(onBack = goHome, onGameFinished = record, bestScore = best(GameType.CORSI))
+                        Screen.HANOI -> HanoiScreen(onBack = goHome, onGameFinished = record, bestScore = best(GameType.HANOI))
                     }
                 }
             }

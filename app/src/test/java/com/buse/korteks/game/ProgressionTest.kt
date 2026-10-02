@@ -10,8 +10,11 @@ class ProgressionTest {
 
     private val day = LocalDate.of(2026, 10, 1)
 
+    private fun rec(score: Int, game: GameType = GameType.STROOP, difficulty: String = "KOLAY") =
+        GameRecord(game, difficulty, TaskResult(correct = 0, total = 0, averageReactionMs = 0, score = score))
+
     private fun play(p: PlayerProgress, date: LocalDate, score: Int = 0) =
-        Progression.recordGame(p, score, date).after
+        Progression.recordGame(p, rec(score), date).after
 
     // ---------------------------------------------------------------- XP ve seviye
 
@@ -37,11 +40,11 @@ class ProgressionTest {
     @Test
     fun `seviye atlama odulde gorunur`() {
         val p = PlayerProgress(totalXp = 95)
-        val reward = Progression.recordGame(p, score = 0, today = day) // +10 XP → 105
+        val reward = Progression.recordGame(p, rec(0), day) // +10 XP → 105
         assertEquals(10, reward.xpGained)
         assertTrue(reward.leveledUp)
         assertEquals(2, reward.levelAfter)
-        assertFalse(Progression.recordGame(reward.after, 0, day).leveledUp)
+        assertFalse(Progression.recordGame(reward.after, rec(0), day).leveledUp)
     }
 
     // ---------------------------------------------------------------- Seri
@@ -101,5 +104,40 @@ class ProgressionTest {
         assertEquals(2, Progression.currentStreak(p, day.plusDays(2)))  // dün oynadı: seri hâlâ kurtarılabilir
         assertEquals(0, Progression.currentStreak(p, day.plusDays(3)))  // bir gün kaçtı
         assertEquals(0, Progression.currentStreak(PlayerProgress(), day))
+    }
+
+    // ---------------------------------------------------------------- Rekor
+
+    @Test
+    fun `ilk puanli oyun rekor olur, dusuk puan rekoru bozmaz`() {
+        val r1 = Progression.recordGame(PlayerProgress(), rec(800), day)
+        assertTrue(r1.isNewBest)
+        assertEquals(null, r1.previousBest)
+        assertEquals(800, r1.after.bestScores["STROOP_KOLAY"])
+
+        val r2 = Progression.recordGame(r1.after, rec(500), day)
+        assertFalse(r2.isNewBest)
+        assertEquals(800, r2.previousBest)
+        assertEquals(800, r2.after.bestScores["STROOP_KOLAY"])
+
+        val r3 = Progression.recordGame(r2.after, rec(950), day)
+        assertTrue(r3.isNewBest)
+        assertEquals(950, r3.after.bestScores["STROOP_KOLAY"])
+    }
+
+    @Test
+    fun `sifir puan ve esit puan rekor sayilmaz`() {
+        assertFalse(Progression.recordGame(PlayerProgress(), rec(0), day).isNewBest)
+        val p = Progression.recordGame(PlayerProgress(), rec(700), day).after
+        assertFalse(Progression.recordGame(p, rec(700), day).isNewBest)
+    }
+
+    @Test
+    fun `rekorlar gorev ve zorluk basina ayri tutulur`() {
+        var p = Progression.recordGame(PlayerProgress(), rec(900, GameType.STROOP, "ZOR"), day).after
+        val other = Progression.recordGame(p, rec(100, GameType.STROOP, "KOLAY"), day)
+        assertTrue(other.isNewBest) // KOLAY'ın rekoru ZOR'dan bağımsız
+        p = Progression.recordGame(other.after, rec(50, GameType.HANOI, "ZOR"), day).after
+        assertEquals(mapOf("STROOP_ZOR" to 900, "STROOP_KOLAY" to 100, "HANOI_ZOR" to 50), p.bestScores)
     }
 }

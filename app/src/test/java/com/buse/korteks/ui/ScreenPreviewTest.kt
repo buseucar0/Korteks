@@ -47,12 +47,24 @@ class ScreenPreviewTest {
             stats = listOf("Doğruluk" to "%88", "İsabet" to "11/12", "Yanlış alarm" to "1"),
             onReplay = {},
             onMenu = {},
-            reward = GameReward(xpGained = 110, before = PlayerProgress(totalXp = 200), after = PlayerProgress(totalXp = 310)),
+            reward = GameReward(
+                xpGained = 110,
+                before = PlayerProgress(totalXp = 200),
+                after = PlayerProgress(totalXp = 310),
+                isNewBest = true,
+                previousBest = 1420,
+            ),
         )
     }
 
     @Test
     fun stroopGiris() = snap { StroopScreen(onBack = {}, vm = StroopViewModel()) }
+
+    @Test
+    fun stroopGirisRekorlu() = snap {
+        val best = mapOf("KOLAY" to 1830, "ORTA" to 2140)
+        StroopScreen(onBack = {}, bestScore = { best[it] }, vm = StroopViewModel())
+    }
 
     @Test
     fun stroopOyun() = snap { StroopScreen(onBack = {}, vm = StroopViewModel(Random(1)).apply { start(StroopDifficulty.ORTA) }) }

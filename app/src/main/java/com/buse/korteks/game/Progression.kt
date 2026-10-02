@@ -4,14 +4,16 @@ import java.time.LocalDate
 import java.time.temporal.ChronoUnit
 
 /**
- * Oyuncunun kalıcı ilerlemesi: toplam XP ve günlük seri (streak).
+ * Oyuncunun kalıcı ilerlemesi: toplam XP, günlük seri (streak) ve rekorlar.
  * Seviye saklanmaz, her zaman totalXp'den hesaplanır (tek doğruluk kaynağı).
+ * bestScores: görev + zorluk başına en yüksek puan, anahtar GameRecord.bestKeyOf ile ("STROOP_ZOR").
  */
 data class PlayerProgress(
     val totalXp: Int = 0,
     val streakDays: Int = 0,
     val longestStreak: Int = 0,
     val lastPlayedDate: LocalDate? = null,
+    val bestScores: Map<String, Int> = emptyMap(),
 )
 
 /** Seviye bilgisi: hangi seviyedeyiz, bu seviyede ne kadar XP birikti, sonrakine ne kadar lazım. */
@@ -20,8 +22,17 @@ data class LevelInfo(val level: Int, val xpIntoLevel: Int, val xpForNextLevel: I
     val fraction: Float get() = xpIntoLevel.toFloat() / xpForNextLevel
 }
 
-/** Bir oyunun ilerlemeye etkisi. Sonuç ekranında "+X XP" ve "Seviye N!" göstermek için. */
-data class GameReward(val xpGained: Int, val before: PlayerProgress, val after: PlayerProgress) {
+/**
+ * Bir oyunun ilerlemeye etkisi. Sonuç ekranında "+X XP", "Seviye N!" ve "Yeni rekor!" göstermek için.
+ * previousBest: bu görev + zorluktaki önceki rekor (ilk oyunsa null).
+ */
+data class GameReward(
+    val xpGained: Int,
+    val before: PlayerProgress,
+    val after: PlayerProgress,
+    val isNewBest: Boolean = false,
+    val previousBest: Int? = null,
+) {
     val levelBefore: Int get() = Progression.levelInfo(before.totalXp).level
     val levelAfter: Int get() = Progression.levelInfo(after.totalXp).level
     val leveledUp: Boolean get() = levelAfter > levelBefore
@@ -49,11 +60,18 @@ object Progression {
         return LevelInfo(level, remaining, xpToNextLevel(level))
     }
 
-    /** Bir oyun bitti: XP ekle, seriyi güncelle. Asıl kayıt fonksiyonu budur. */
-    fun recordGame(progress: PlayerProgress, score: Int, today: LocalDate): GameReward {
+    /** Bir oyun bitti: XP ekle, seriyi ve rekoru güncelle. Asıl kayıt fonksiyonu budur. */
+    fun recordGame(progress: PlayerProgress, record: GameRecord, today: LocalDate): GameReward {
+        val score = record.result.score
         val xp = xpFor(score)
-        val after = withStreakUpdated(progress, today).copy(totalXp = progress.totalXp + xp)
-        return GameReward(xpGained = xp, before = progress, after = after)
+        var after = withStreakUpdated(progress, today).copy(totalXp = progress.totalXp + xp)
+
+        // Rekor: 0 puan rekor sayılmaz; eşit puan da yeni rekor değildir
+        val previousBest = progress.bestScores[record.bestKey]
+        val isNewBest = score > (previousBest ?: 0)
+        if (isNewBest) after = after.copy(bestScores = after.bestScores + (record.bestKey to score))
+
+        return GameReward(xpGained = xp, before = progress, after = after, isNewBest = isNewBest, previousBest = previousBest)
     }
 
     /**

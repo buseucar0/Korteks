@@ -21,10 +21,11 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.buse.korteks.game.GameRecord
 import com.buse.korteks.game.GameReward
+import com.buse.korteks.game.GameType
 import com.buse.korteks.game.InkColor
 import com.buse.korteks.game.StroopDifficulty
-import com.buse.korteks.game.TaskResult
 
 /**
  * Stroop ekranı. Durumu StroopViewModel tutar; bu fonksiyon sadece durumu çizer ve
@@ -34,7 +35,8 @@ import com.buse.korteks.game.TaskResult
 @Composable
 fun StroopScreen(
     onBack: () -> Unit,
-    onGameFinished: (TaskResult) -> GameReward? = { null },
+    onGameFinished: (GameRecord) -> GameReward? = { null },
+    bestScore: (difficulty: String) -> Int? = { null },
     vm: StroopViewModel = viewModel(),
 ) {
     val state = vm.state
@@ -47,7 +49,9 @@ fun StroopScreen(
         val wasPlaying = vm.state is StroopUiState.Playing
         action()
         val now = vm.state
-        if (wasPlaying && now is StroopUiState.Finished) vm.attachReward(onGameFinished(now.result))
+        if (wasPlaying && now is StroopUiState.Finished) {
+            vm.attachReward(onGameFinished(GameRecord(GameType.STROOP, now.difficulty.name, now.result)))
+        }
     }
 
     // Tek geri tuşu dinleyicisi: oyun/sonuç ekranındaysa girişe, girişteyse ana menüye dön
@@ -71,7 +75,7 @@ fun StroopScreen(
                 }
             },
             choices = StroopDifficulty.entries.map { d ->
-                "${d.title}  ·  ${d.colorCount} renk  ·  ${d.trialCount} soru  ·  ${formatSeconds(d.timeLimitMs)} sn" to
+                withBest("${d.title}  ·  ${d.colorCount} renk  ·  ${d.trialCount} soru  ·  ${formatSeconds(d.timeLimitMs)} sn", bestScore(d.name)) to
                     { vm.start(d) }
             },
             onBack = onBack,
