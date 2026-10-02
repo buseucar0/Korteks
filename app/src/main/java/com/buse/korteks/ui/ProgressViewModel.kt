@@ -6,6 +6,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.AndroidViewModel
 import com.buse.korteks.data.ProgressStore
+import com.buse.korteks.game.DailyPlan
 import com.buse.korteks.game.GameRecord
 import com.buse.korteks.game.GameReward
 import com.buse.korteks.game.GameType
@@ -38,6 +39,11 @@ class ProgressViewModel(application: Application) : AndroidViewModel(application
 
     /** Görev + zorluktaki rekor (hiç oynanmadıysa null). Giriş ekranındaki zorluk butonlarında gösterilir. */
     fun bestScore(game: GameType, difficulty: String): Int? = progress.bestScores[GameRecord.bestKeyOf(game, difficulty)]
+
+    /** Bugünün günlük antrenman görevleri ve bunlardan bitirilenler. */
+    fun dailyPlan(today: LocalDate = LocalDate.now()): List<GameType> = DailyPlan.gamesFor(today)
+
+    fun dailyDone(today: LocalDate = LocalDate.now()): Set<GameType> = Progression.dailyDoneOn(progress, today)
 
     fun recordGame(record: GameRecord, today: LocalDate = LocalDate.now()): GameReward {
         val reward = Progression.recordGame(progress, record, today)

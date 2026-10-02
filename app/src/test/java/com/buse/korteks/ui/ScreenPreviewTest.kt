@@ -8,6 +8,7 @@ import com.buse.korteks.data.MatrixPuzzleLoader
 import com.buse.korteks.game.CorsiDifficulty
 import com.buse.korteks.game.HanoiDifficulty
 import com.buse.korteks.game.GameReward
+import com.buse.korteks.game.GameType
 import com.buse.korteks.game.LevelInfo
 import com.buse.korteks.game.MatrixDifficulty
 import com.buse.korteks.game.NBackDifficulty
@@ -36,7 +37,15 @@ class ScreenPreviewTest {
 
     @Test
     fun anaMenuIlerleme() = snap {
-        HomeScreen(onOpen = {}, levelInfo = LevelInfo(level = 3, xpIntoLevel = 120, xpForNextLevel = 200), streak = 4, longestStreak = 9)
+        val plan = listOf(GameType.STROOP, GameType.CORSI, GameType.HANOI)
+        HomeScreen(
+            onOpen = {},
+            levelInfo = LevelInfo(level = 3, xpIntoLevel = 120, xpForNextLevel = 200),
+            streak = 4,
+            longestStreak = 9,
+            dailyPlan = plan,
+            dailyDone = setOf(GameType.CORSI),
+        )
     }
 
     @Test
@@ -53,6 +62,7 @@ class ScreenPreviewTest {
                 after = PlayerProgress(totalXp = 310),
                 isNewBest = true,
                 previousBest = 1420,
+                dailyBonusXp = 50,
             ),
         )
     }

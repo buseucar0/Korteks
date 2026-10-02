@@ -2,6 +2,7 @@ package com.buse.korteks.ui
 
 import androidx.compose.ui.test.hasClickAction
 import androidx.compose.ui.test.hasScrollAction
+import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onFirst
@@ -39,8 +40,9 @@ class NavigationTest {
 
     /** Sekme listesi kaydırılabilir: alttaki sekmeler ekranda görünmüyorsa önce oraya kaydır. */
     private fun openTab(tab: String) {
-        rule.onNode(hasScrollAction()).performScrollToNode(hasText(tab))
-        rule.onNodeWithText(tab).performClick()
+        // Sekme adı günlük antrenman kartında da geçebilir: sekme kartını etiketinden bul
+        rule.onNode(hasScrollAction()).performScrollToNode(hasTestTag("sekme_$tab"))
+        rule.onNode(hasTestTag("sekme_$tab")).performClick()
     }
 
     @Test
@@ -80,7 +82,7 @@ class NavigationTest {
     fun `oyun bitince xp ve seri ana menude gorunur`() {
         rule.onNodeWithText("🔥 0").assertExists() // henüz hiç oynanmadı
 
-        rule.onNodeWithText("Dikkat").performClick()
+        openTab("Dikkat")
         val kolay = rule.onNode(hasText("Kolay", substring = true) and hasClickAction())
         kolay.performScrollTo()
         rule.mainClock.autoAdvance = false
@@ -102,7 +104,7 @@ class NavigationTest {
      */
     @Test
     fun `ekran yeniden olusturulunca stroop oyunu kaldigi yerden devam eder`() {
-        rule.onNodeWithText("Dikkat").performClick()
+        openTab("Dikkat")
         val kolay = rule.onNode(hasText("Kolay", substring = true) and hasClickAction())
         kolay.performScrollTo()
         rule.mainClock.autoAdvance = false

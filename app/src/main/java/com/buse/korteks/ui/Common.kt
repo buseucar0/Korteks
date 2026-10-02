@@ -176,6 +176,16 @@ fun ResultScreen(
                 Spacer(Modifier.height(8.dp))
                 Text("🎉 Seviye ${reward.levelAfter}!", fontSize = 36.sp, fontWeight = FontWeight.Black, color = Color(0xFFFFEB3B))
             }
+            if (reward.dailyCompleted) {
+                Spacer(Modifier.height(8.dp))
+                Text(
+                    "📅 Günlük antrenman tamam!\n+${reward.dailyBonusXp} XP bonus",
+                    fontSize = 20.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color(0xFF66BB6A),
+                    textAlign = TextAlign.Center,
+                )
+            }
             Spacer(Modifier.height(8.dp))
             when {
                 reward.isNewBest -> Text("🏆 Yeni rekor!", fontSize = 28.sp, fontWeight = FontWeight.Black, color = Color(0xFFFFB300))

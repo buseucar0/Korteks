@@ -1,5 +1,6 @@
 package com.buse.korteks.data
 
+import com.buse.korteks.game.GameType
 import com.buse.korteks.game.PlayerProgress
 import java.time.LocalDate
 import org.junit.Assert.assertEquals
@@ -26,6 +27,8 @@ class ProgressStoreTest {
             longestStreak = 9,
             lastPlayedDate = LocalDate.of(2026, 10, 1),
             bestScores = mapOf("STROOP_ZOR" to 2140, "HANOI_KOLAY" to 3000),
+            dailyDate = LocalDate.of(2026, 10, 1),
+            dailyDone = setOf(GameType.STROOP, GameType.HANOI),
         )
         ProgressStore(context).save(p)
         assertEquals(p, ProgressStore(context).load()) // uygulama yeniden açılmış gibi

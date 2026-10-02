@@ -24,8 +24,20 @@ import com.buse.korteks.ui.ProgressViewModel
 import com.buse.korteks.ui.StroopScreen
 import com.buse.korteks.ui.SymbolDigitScreen
 
-/** Uygulamadaki ekranlar. Yeni sekme eklenince buraya bir satır eklenir. */
-enum class Screen { HOME, STROOP, MATRIX, NBACK, SPEED, CORSI, HANOI }
+/** Uygulamadaki ekranlar ve gösterdikleri görev. Yeni sekme eklenince buraya bir satır eklenir. */
+enum class Screen(val game: GameType?) {
+    HOME(null),
+    STROOP(GameType.STROOP),
+    MATRIX(GameType.MATRIX),
+    NBACK(GameType.NBACK),
+    SPEED(GameType.SPEED),
+    CORSI(GameType.CORSI),
+    HANOI(GameType.HANOI);
+
+    companion object {
+        fun of(game: GameType): Screen = entries.first { it.game == game }
+    }
+}
 
 // Uygulamanın giriş noktası (entry point), gömülüdeki main() gibi düşün.
 class MainActivity : ComponentActivity() {
@@ -54,6 +66,8 @@ class MainActivity : ComponentActivity() {
                             levelInfo = progressVm.levelInfo,
                             streak = progressVm.currentStreak(),
                             longestStreak = progressVm.progress.longestStreak,
+                            dailyPlan = progressVm.dailyPlan(),
+                            dailyDone = progressVm.dailyDone(),
                         )
                         Screen.STROOP -> StroopScreen(onBack = goHome, onGameFinished = record, bestScore = best(GameType.STROOP))
                         Screen.MATRIX -> MatrixScreen(onBack = goHome, onGameFinished = record, bestScore = best(GameType.MATRIX))

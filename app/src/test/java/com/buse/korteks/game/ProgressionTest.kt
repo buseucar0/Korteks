@@ -140,4 +140,44 @@ class ProgressionTest {
         p = Progression.recordGame(other.after, rec(50, GameType.HANOI, "ZOR"), day).after
         assertEquals(mapOf("STROOP_ZOR" to 900, "STROOP_KOLAY" to 100, "HANOI_ZOR" to 50), p.bestScores)
     }
+
+    // ---------------------------------------------------------------- Günlük antrenman
+
+    @Test
+    fun `gunluk plan ayni gun hep ayni, 3 farkli gorev, gunden gune degisir`() {
+        val plan = DailyPlan.gamesFor(day)
+        assertEquals(plan, DailyPlan.gamesFor(day))
+        assertEquals(3, plan.size)
+        assertEquals(3, plan.toSet().size)
+        val month = (0L until 30L).map { DailyPlan.gamesFor(day.plusDays(it)).toSet() }.toSet()
+        assertTrue("30 günde en az birkaç farklı plan olmalı", month.size > 3)
+    }
+
+    @Test
+    fun `plandaki uc gorev bitince bonus bir kez verilir`() {
+        val plan = DailyPlan.gamesFor(day)
+        var p = PlayerProgress()
+        val first = Progression.recordGame(p, rec(0, plan[0]), day)
+        assertFalse(first.dailyCompleted)
+        p = Progression.recordGame(first.after, rec(0, plan[1]), day).after
+        val last = Progression.recordGame(p, rec(0, plan[2]), day)
+        assertTrue(last.dailyCompleted)
+        assertEquals(DailyPlan.BONUS_XP, last.dailyBonusXp)
+        assertEquals(3 * 10 + DailyPlan.BONUS_XP, last.after.totalXp)
+
+        val again = Progression.recordGame(last.after, rec(0, plan[0]), day) // aynı gün tekrar
+        assertFalse(again.dailyCompleted)
+    }
+
+    @Test
+    fun `plan disi gorev sayilmaz, ertesi gun liste sifirlanir`() {
+        val plan = DailyPlan.gamesFor(day)
+        val outside = GameType.entries.first { it !in plan }
+        val p = Progression.recordGame(PlayerProgress(), rec(0, outside), day).after
+        assertEquals(emptySet<GameType>(), Progression.dailyDoneOn(p, day))
+
+        val p2 = Progression.recordGame(p, rec(0, plan[0]), day).after
+        assertEquals(setOf(plan[0]), Progression.dailyDoneOn(p2, day))
+        assertEquals(emptySet<GameType>(), Progression.dailyDoneOn(p2, day.plusDays(1)))
+    }
 }

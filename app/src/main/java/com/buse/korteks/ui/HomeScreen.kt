@@ -12,17 +12,22 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.buse.korteks.Screen
+import com.buse.korteks.game.DailyPlan
+import com.buse.korteks.game.GameType
 import com.buse.korteks.game.LevelInfo
 
 /** target = null ise sekme henüz yapılmadı ("Yakında"). */
@@ -47,22 +52,33 @@ fun HomeScreen(
     levelInfo: LevelInfo = LevelInfo(level = 1, xpIntoLevel = 0, xpForNextLevel = 100),
     streak: Int = 0,
     longestStreak: Int = 0,
+    dailyPlan: List<GameType> = emptyList(),
+    dailyDone: Set<GameType> = emptySet(),
 ) {
-    Column(Modifier.fillMaxSize().padding(horizontal = 20.dp)) {
-        Spacer(Modifier.height(24.dp))
-        Text("Korteks", style = MaterialTheme.typography.headlineLarge, fontWeight = FontWeight.Bold)
-        Spacer(Modifier.height(8.dp))
-        Text(
-            "IQ testlerinde ve bilişsel bilim araştırmalarında kullanılan görevlerle beynini antrenman yap",
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-        Spacer(Modifier.height(16.dp))
-        ProgressCard(levelInfo, streak, longestStreak)
-        Spacer(Modifier.height(16.dp))
-        LazyColumn(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            items(allTabs) { tab -> TabCard(tab, onOpen) }
+    // Bütün sayfa tek kaydırılabilir liste: kartlar çoğaldıkça küçük ekranlarda da sığsın
+    LazyColumn(
+        Modifier.fillMaxSize().padding(horizontal = 20.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        item {
+            Column {
+                Spacer(Modifier.height(12.dp))
+                Text("Korteks", style = MaterialTheme.typography.headlineLarge, fontWeight = FontWeight.Bold)
+                Spacer(Modifier.height(8.dp))
+                Text(
+                    "IQ testlerinde ve bilişsel bilim araştırmalarında kullanılan görevlerle beynini antrenman yap",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Spacer(Modifier.height(4.dp))
+            }
         }
+        item { ProgressCard(levelInfo, streak, longestStreak) }
+        if (dailyPlan.isNotEmpty()) {
+            item { DailyCard(dailyPlan, dailyDone, onOpen) }
+        }
+        items(allTabs) { tab -> TabCard(tab, onOpen) }
+        item { Spacer(Modifier.height(12.dp)) }
     }
 }
 
@@ -105,12 +121,57 @@ private fun ProgressCard(levelInfo: LevelInfo, streak: Int, longestStreak: Int) 
     }
 }
 
+/** Günlük antrenman: bugünün 3 görevi, bitenler işaretli. Göreve dokununca o sekme açılır. */
+@Composable
+private fun DailyCard(plan: List<GameType>, done: Set<GameType>, onOpen: (Screen) -> Unit) {
+    val finished = done.containsAll(plan)
+    Card(Modifier.fillMaxWidth()) {
+        Column(Modifier.padding(16.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    "📅 Günlük antrenman",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.weight(1f),
+                )
+                Text("${plan.count { it in done }}/${plan.size}", style = MaterialTheme.typography.titleMedium)
+            }
+            Text(
+                if (finished) "✓ Bugünkü antrenman tamam!" else "Üçünü de bitir: +${DailyPlan.BONUS_XP} XP bonus",
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Spacer(Modifier.height(12.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                plan.forEach { game ->
+                    val isDone = game in done
+                    Card(
+                        onClick = { onOpen(Screen.of(game)) },
+                        modifier = Modifier.weight(1f),
+                        colors = CardDefaults.cardColors(
+                            containerColor = if (isDone) Color(0xFF1B5E20) else Color(0xFF3A3A3A),
+                        ),
+                    ) {
+                        Column(
+                            Modifier.fillMaxWidth().padding(vertical = 10.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                        ) {
+                            Text(if (isDone) "✓" else game.emoji, fontSize = 24.sp)
+                            Text(game.title, style = MaterialTheme.typography.labelLarge)
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
 @Composable
 private fun TabCard(tab: TabInfo, onOpen: (Screen) -> Unit) {
     Card(
         onClick = { tab.target?.let(onOpen) },
         enabled = tab.target != null,
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier.fillMaxWidth().testTag("sekme_${tab.title}"),
     ) {
         Row(Modifier.padding(20.dp), verticalAlignment = Alignment.CenterVertically) {
             Text(tab.emoji, fontSize = 32.sp)

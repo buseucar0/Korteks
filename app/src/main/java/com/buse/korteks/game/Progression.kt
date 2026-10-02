@@ -7,6 +7,7 @@ import java.time.temporal.ChronoUnit
  * Oyuncunun kalıcı ilerlemesi: toplam XP, günlük seri (streak) ve rekorlar.
  * Seviye saklanmaz, her zaman totalXp'den hesaplanır (tek doğruluk kaynağı).
  * bestScores: görev + zorluk başına en yüksek puan, anahtar GameRecord.bestKeyOf ile ("STROOP_ZOR").
+ * dailyDate / dailyDone: günlük antrenmanda o gün bitirilen görevler (başka bir günün kaydıysa geçersiz).
  */
 data class PlayerProgress(
     val totalXp: Int = 0,
@@ -14,6 +15,8 @@ data class PlayerProgress(
     val longestStreak: Int = 0,
     val lastPlayedDate: LocalDate? = null,
     val bestScores: Map<String, Int> = emptyMap(),
+    val dailyDate: LocalDate? = null,
+    val dailyDone: Set<GameType> = emptySet(),
 )
 
 /** Seviye bilgisi: hangi seviyedeyiz, bu seviyede ne kadar XP birikti, sonrakine ne kadar lazım. */
@@ -25,6 +28,7 @@ data class LevelInfo(val level: Int, val xpIntoLevel: Int, val xpForNextLevel: I
 /**
  * Bir oyunun ilerlemeye etkisi. Sonuç ekranında "+X XP", "Seviye N!" ve "Yeni rekor!" göstermek için.
  * previousBest: bu görev + zorluktaki önceki rekor (ilk oyunsa null).
+ * dailyBonusXp: bu oyunla günlük antrenman tamamlandıysa verilen bonus (xpGained'e dahil değil).
  */
 data class GameReward(
     val xpGained: Int,
@@ -32,7 +36,10 @@ data class GameReward(
     val after: PlayerProgress,
     val isNewBest: Boolean = false,
     val previousBest: Int? = null,
+    val dailyBonusXp: Int = 0,
 ) {
+    val dailyCompleted: Boolean get() = dailyBonusXp > 0
+
     val levelBefore: Int get() = Progression.levelInfo(before.totalXp).level
     val levelAfter: Int get() = Progression.levelInfo(after.totalXp).level
     val leveledUp: Boolean get() = levelAfter > levelBefore
@@ -71,8 +78,27 @@ object Progression {
         val isNewBest = score > (previousBest ?: 0)
         if (isNewBest) after = after.copy(bestScores = after.bestScores + (record.bestKey to score))
 
-        return GameReward(xpGained = xp, before = progress, after = after, isNewBest = isNewBest, previousBest = previousBest)
+        // Günlük antrenman: görev bugünün planındaysa işaretle; üçü de ilk kez tamamlandıysa bonus
+        val plan = DailyPlan.gamesFor(today)
+        val doneBefore = dailyDoneOn(progress, today)
+        val doneAfter = if (record.game in plan) doneBefore + record.game else doneBefore
+        val justCompleted = !doneBefore.containsAll(plan) && doneAfter.containsAll(plan)
+        val bonus = if (justCompleted) DailyPlan.BONUS_XP else 0
+        after = after.copy(dailyDate = today, dailyDone = doneAfter, totalXp = after.totalXp + bonus)
+
+        return GameReward(
+            xpGained = xp,
+            before = progress,
+            after = after,
+            isNewBest = isNewBest,
+            previousBest = previousBest,
+            dailyBonusXp = bonus,
+        )
     }
+
+    /** Bugün günlük antrenmanda bitirilmiş görevler (kayıt başka bir güne aitse boş). */
+    fun dailyDoneOn(progress: PlayerProgress, today: LocalDate): Set<GameType> =
+        if (progress.dailyDate == today) progress.dailyDone else emptySet()
 
     /**
      * Ekranda gösterilecek seri. Son oyun bugün ya da dünse seri sürüyor;
