@@ -77,6 +77,16 @@ class NavigationTest {
         }
     }
 
+    @Test
+    fun `profil karti acilir ve geri donulur`() {
+        rule.onNode(hasScrollAction()).performScrollToNode(hasTestTag("profil_karti"))
+        rule.onNode(hasTestTag("profil_karti")).performClick()
+        rule.onNodeWithText("Bilişsel profilim").assertExists()
+        rule.onNodeWithText("📤 Paylaş").assertExists()
+        pressBack()
+        rule.onNodeWithText("Korteks").assertExists()
+    }
+
     /** Uçtan uca: gerçek kayıt (SharedPreferences) ile bir oyun bitir, ödülü ve ana menüyü kontrol et. */
     @Test
     fun `oyun bitince xp ve seri ana menude gorunur`() {

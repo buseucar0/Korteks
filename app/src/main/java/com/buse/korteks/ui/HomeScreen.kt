@@ -77,6 +77,7 @@ fun HomeScreen(
         if (dailyPlan.isNotEmpty()) {
             item { DailyCard(dailyPlan, dailyDone, onOpen) }
         }
+        item { ProfileEntryCard(onOpen) }
         items(allTabs) { tab -> TabCard(tab, onOpen) }
         item { Spacer(Modifier.height(12.dp)) }
     }
@@ -162,6 +163,21 @@ private fun DailyCard(plan: List<GameType>, done: Set<GameType>, onOpen: (Screen
                     }
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun ProfileEntryCard(onOpen: (Screen) -> Unit) {
+    Card(onClick = { onOpen(Screen.PROFILE) }, modifier = Modifier.fillMaxWidth().testTag("profil_karti")) {
+        Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
+            Text("📊", fontSize = 28.sp)
+            Spacer(Modifier.width(16.dp))
+            Column(Modifier.weight(1f)) {
+                Text("Profil kartın", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                Text("Görevlerdeki güçlü yönlerini gör ve paylaş", style = MaterialTheme.typography.bodyMedium)
+            }
+            Text("›", fontSize = 28.sp)
         }
     }
 }

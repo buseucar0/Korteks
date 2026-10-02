@@ -5,7 +5,7 @@ import kotlin.random.Random
 const val NBACK_LETTERS = "CHKLQRST"
 
 /** Her kanalda (konum, harf) puanlanan adımların yaklaşık bu yüzdesi "eşleşme" olur. */
-private const val MATCH_PERCENT = 30
+internal const val MATCH_PERCENT = 30
 
 enum class NBackDifficulty(val title: String, val n: Int, val scoredSteps: Int, val stepMs: Long) {
     KOLAY("1-Back", n = 1, scoredSteps = 20, stepMs = 3000),

@@ -20,6 +20,7 @@ import com.buse.korteks.ui.HanoiScreen
 import com.buse.korteks.ui.HomeScreen
 import com.buse.korteks.ui.MatrixScreen
 import com.buse.korteks.ui.NBackScreen
+import com.buse.korteks.ui.ProfileScreen
 import com.buse.korteks.ui.ProgressViewModel
 import com.buse.korteks.ui.StroopScreen
 import com.buse.korteks.ui.SymbolDigitScreen
@@ -32,7 +33,8 @@ enum class Screen(val game: GameType?) {
     NBACK(GameType.NBACK),
     SPEED(GameType.SPEED),
     CORSI(GameType.CORSI),
-    HANOI(GameType.HANOI);
+    HANOI(GameType.HANOI),
+    PROFILE(null);
 
     companion object {
         fun of(game: GameType): Screen = entries.first { it.game == game }
@@ -75,6 +77,12 @@ class MainActivity : ComponentActivity() {
                         Screen.SPEED -> SymbolDigitScreen(onBack = goHome, onGameFinished = record, bestScore = best(GameType.SPEED))
                         Screen.CORSI -> CorsiScreen(onBack = goHome, onGameFinished = record, bestScore = best(GameType.CORSI))
                         Screen.HANOI -> HanoiScreen(onBack = goHome, onGameFinished = record, bestScore = best(GameType.HANOI))
+                        Screen.PROFILE -> ProfileScreen(
+                            onBack = goHome,
+                            profile = progressVm.profile(),
+                            levelInfo = progressVm.levelInfo,
+                            streak = progressVm.currentStreak(),
+                        )
                     }
                 }
             }

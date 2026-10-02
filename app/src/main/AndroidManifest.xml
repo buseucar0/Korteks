@@ -13,6 +13,17 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <!-- Profil kartı görselini paylaşmak için: dosyayı diğer uygulamalara güvenli bir adresle (content://) açar -->
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.dosyalar"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/paylasim_yollari" />
+        </provider>
     </application>
 
 </manifest>

@@ -5,6 +5,7 @@ import androidx.compose.ui.platform.LocalContext
 import app.cash.paparazzi.DeviceConfig
 import app.cash.paparazzi.Paparazzi
 import com.buse.korteks.data.MatrixPuzzleLoader
+import com.buse.korteks.game.CognitiveProfile
 import com.buse.korteks.game.CorsiDifficulty
 import com.buse.korteks.game.HanoiDifficulty
 import com.buse.korteks.game.GameReward
@@ -130,5 +131,19 @@ class ScreenPreviewTest {
             move(1, 2)
         }
         HanoiScreen(onBack = {}, vm = vm)
+    }
+
+    @Test
+    fun profilEkrani() = snap {
+        val best = mapOf(
+            "STROOP_ZOR" to 3100, "MATRIX_ORTA" to 1500, "NBACK_ORTA" to 2400,
+            "SPEED_ORTA" to 4100, "CORSI_ORTA" to 620, "HANOI_KOLAY" to 3000,
+        )
+        ProfileScreen(
+            onBack = {},
+            profile = CognitiveProfile.of(best),
+            levelInfo = LevelInfo(level = 4, xpIntoLevel = 90, xpForNextLevel = 250),
+            streak = 6,
+        )
     }
 }

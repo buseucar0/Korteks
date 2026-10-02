@@ -6,6 +6,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.AndroidViewModel
 import com.buse.korteks.data.ProgressStore
+import com.buse.korteks.game.CognitiveProfile
 import com.buse.korteks.game.DailyPlan
 import com.buse.korteks.game.GameRecord
 import com.buse.korteks.game.GameReward
@@ -39,6 +40,9 @@ class ProgressViewModel(application: Application) : AndroidViewModel(application
 
     /** Görev + zorluktaki rekor (hiç oynanmadıysa null). Giriş ekranındaki zorluk butonlarında gösterilir. */
     fun bestScore(game: GameType, difficulty: String): Int? = progress.bestScores[GameRecord.bestKeyOf(game, difficulty)]
+
+    /** Profil kartı için görev başına 0..100 puan (oynanmamışsa null). */
+    fun profile(): Map<GameType, Int?> = CognitiveProfile.of(progress.bestScores)
 
     /** Bugünün günlük antrenman görevleri ve bunlardan bitirilenler. */
     fun dailyPlan(today: LocalDate = LocalDate.now()): List<GameType> = DailyPlan.gamesFor(today)
