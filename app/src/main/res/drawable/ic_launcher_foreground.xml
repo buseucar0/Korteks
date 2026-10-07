@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Uygulama ikonunun ön planı: profil kartındaki radar grafiği (6 eksen = 6 görev).
+  108x108 tuval; ikon hangi şekle kesilirse kesilsin (daire, yuvarlak kare) görünsün diye
+  çizim ortadaki 66 birimlik güvenli bölgede kalır.
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- Ağ: dış altıgen, iç halka ve eksenler -->
+    <path android:strokeColor="#99E8DEF8" android:strokeWidth="2.2" android:strokeLineJoin="round" android:pathData="M54.00,22.50 L81.28,38.25 L81.28,69.75 L54.00,85.50 L26.72,69.75 L26.72,38.25 Z"/>
+    <path android:strokeColor="#60E8DEF8" android:strokeWidth="1.6" android:strokeLineJoin="round" android:pathData="M54.00,38.25 L67.64,46.12 L67.64,61.88 L54.00,69.75 L40.36,61.88 L40.36,46.12 Z"/>
+    <path android:strokeColor="#60E8DEF8" android:strokeWidth="1.6" android:pathData="M54.0,54.0 L54.00,22.50 M54.0,54.0 L81.28,38.25 M54.0,54.0 L81.28,69.75 M54.0,54.0 L54.00,85.50 M54.0,54.0 L26.72,69.75 M54.0,54.0 L26.72,38.25"/>
+    <!-- Veri alanı -->
+    <path android:fillColor="#C0D0BCFF" android:pathData="M54.00,26.28 L72.55,43.29 L79.92,68.96 L54.00,73.53 L31.63,66.91 L33.81,42.34 Z"/>
+    <path android:strokeColor="#FFE8DEFF" android:strokeWidth="3" android:strokeLineJoin="round" android:pathData="M54.00,26.28 L72.55,43.29 L79.92,68.96 L54.00,73.53 L31.63,66.91 L33.81,42.34 Z"/>
+    <path android:fillColor="#FFFFFFFF" android:pathData="M51.20,26.28 a2.8,2.8 0 1,0 5.6,0 a2.8,2.8 0 1,0 -5.6,0"/>
+    <path android:fillColor="#FFFFFFFF" android:pathData="M69.75,43.29 a2.8,2.8 0 1,0 5.6,0 a2.8,2.8 0 1,0 -5.6,0"/>
+    <path android:fillColor="#FFFFFFFF" android:pathData="M77.12,68.96 a2.8,2.8 0 1,0 5.6,0 a2.8,2.8 0 1,0 -5.6,0"/>
+    <path android:fillColor="#FFFFFFFF" android:pathData="M51.20,73.53 a2.8,2.8 0 1,0 5.6,0 a2.8,2.8 0 1,0 -5.6,0"/>
+    <path android:fillColor="#FFFFFFFF" android:pathData="M28.83,66.91 a2.8,2.8 0 1,0 5.6,0 a2.8,2.8 0 1,0 -5.6,0"/>
+    <path android:fillColor="#FFFFFFFF" android:pathData="M31.01,42.34 a2.8,2.8 0 1,0 5.6,0 a2.8,2.8 0 1,0 -5.6,0"/>
+</vector>

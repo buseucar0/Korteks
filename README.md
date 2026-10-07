@@ -1,3 +1,5 @@
+<img src="docs/ikon.png" width="96" align="right" alt="Korteks ikonu">
+
 # Korteks
 
 IQ testlerinde ve bilişsel bilim araştırmalarında kullanılan görevlerle beynini antrenman yap.
@@ -38,6 +40,8 @@ Her görevde 3 zorluk seviyesi ve bir "Bu görev nedir?" bilgi kartı bulunur.
 - **Günlük antrenman:** her gün 3 görev; üçü bitince +50 XP
 - **Profil kartı:** 6 görevin radar grafiği, PNG olarak paylaşılabilir (Instagram, WhatsApp...)
 - **Tablet uyumu:** yatay ekranda taşmayan düzen
+- **Renk körü dostu:** renkler renk körlüğü simülasyonuyla ölçülerek seçildi; isteğe bağlı mod Stroop'ta
+  en iyi ayrılan 4 rengi kullanır, Matris'te renk kurallarını kaldırır
 - Ekran yeniden kurulsa da (tema/dil değişimi, döndürme) oyun kaldığı yerden devam eder
 
 ## Mimari
@@ -114,6 +118,7 @@ Minimum Android 8.0 (API 26).
 | Oyun mantığı | JUnit (JVM) | Kurallar, puanlama, "her matrisin tek doğru cevabı var", seri ve rekor kuralları |
 | ViewModel | JUnit (JVM) | Çift tıklama ve geç kalan sayaç gibi yarış durumları |
 | Oynanış ve navigasyon | Robolectric + Compose UI test | Her oyun baştan sona oynanır, süreler elle ileri sarılır, geri tuşu, ekranın yeniden kurulması |
-| Ekran önizlemeleri | Paparazzi | Telefon ve yatay tablette ekranların çizimi |
+| Ekran önizlemeleri | Paparazzi | Telefon ve yatay tablette ekranların çizimi, uygulama ikonu |
+| Renk paleti | JUnit (JVM) | Renk körlüğü simülasyonunda renk çiftleri arası ΔE ve okunabilirlik kontrastı |
 
 Testler emülatör gerektirmez.
