@@ -22,6 +22,7 @@ import com.buse.korteks.ui.MatrixScreen
 import com.buse.korteks.ui.NBackScreen
 import com.buse.korteks.ui.ProfileScreen
 import com.buse.korteks.ui.ProgressViewModel
+import com.buse.korteks.ui.SettingsViewModel
 import com.buse.korteks.ui.StroopScreen
 import com.buse.korteks.ui.SymbolDigitScreen
 
@@ -54,6 +55,7 @@ class MainActivity : ComponentActivity() {
                 // Seviye/seri: tüm ekranların paylaştığı tek ViewModel (Activity'ye bağlı).
                 // Her oyun bittiği an record bir kez çağrılır, dönen ödül sonuç ekranında gösterilir.
                 val progressVm: ProgressViewModel = viewModel()
+                val settingsVm: SettingsViewModel = viewModel()
                 val record: (GameRecord) -> GameReward = { progressVm.recordGame(it) }
                 fun best(game: GameType): (String) -> Int? = { difficulty -> progressVm.bestScore(game, difficulty) }
 
@@ -70,9 +72,21 @@ class MainActivity : ComponentActivity() {
                             longestStreak = progressVm.progress.longestStreak,
                             dailyPlan = progressVm.dailyPlan(),
                             dailyDone = progressVm.dailyDone(),
+                            colorBlindMode = settingsVm.colorBlindMode,
+                            onColorBlindModeChange = settingsVm::updateColorBlindMode,
                         )
-                        Screen.STROOP -> StroopScreen(onBack = goHome, onGameFinished = record, bestScore = best(GameType.STROOP))
-                        Screen.MATRIX -> MatrixScreen(onBack = goHome, onGameFinished = record, bestScore = best(GameType.MATRIX))
+                        Screen.STROOP -> StroopScreen(
+                            onBack = goHome,
+                            onGameFinished = record,
+                            bestScore = best(GameType.STROOP),
+                            colorBlindMode = settingsVm.colorBlindMode,
+                        )
+                        Screen.MATRIX -> MatrixScreen(
+                            onBack = goHome,
+                            onGameFinished = record,
+                            bestScore = best(GameType.MATRIX),
+                            colorBlindMode = settingsVm.colorBlindMode,
+                        )
                         Screen.NBACK -> NBackScreen(onBack = goHome, onGameFinished = record, bestScore = best(GameType.NBACK))
                         Screen.SPEED -> SymbolDigitScreen(onBack = goHome, onGameFinished = record, bestScore = best(GameType.SPEED))
                         Screen.CORSI -> CorsiScreen(onBack = goHome, onGameFinished = record, bestScore = best(GameType.CORSI))

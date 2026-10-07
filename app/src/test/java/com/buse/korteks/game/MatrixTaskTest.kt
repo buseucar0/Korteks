@@ -91,4 +91,26 @@ class MatrixTaskTest {
         assertEquals(1, task.result().correct)
         assertTrue(task.result().score > 100)
     }
+
+    @Test
+    fun `renk koru modunda renk kurali kalkar, sadece renkten ibaret bulmaca cikar`() {
+        val colorOnly = shapeRows.copy(
+            shape = sabit(Shape.KARE),
+            count = sabit(1),
+            color = AttributeRule(RuleType.SATIR, listOf(InkColor.KIRMIZI, InkColor.MAVI, InkColor.YESIL)),
+        )
+        assertNull(colorOnly.withoutColorRule())
+        val stripped = arrowLatin.withoutColorRule()!!
+        assertEquals(RuleType.SABIT, stripped.color.type)
+        assertEquals(RuleType.SUTUN, stripped.rotation.type) // diğer kurallar aynen kalır
+    }
+
+    @Test
+    fun `renk koru modunda secenekler renkle ayrilmaz`() {
+        for (seed in 0 until 100) {
+            val q = shapeRows.buildQuestion(6, Random(seed), colorDistractors = false)
+            assertTrue(q.options.all { it.color == shapeRows.answer.color })
+            assertEquals(6, q.options.distinct().size)
+        }
+    }
 }

@@ -26,6 +26,7 @@ import com.buse.korteks.game.GameReward
 import com.buse.korteks.game.GameType
 import com.buse.korteks.game.InkColor
 import com.buse.korteks.game.StroopDifficulty
+import com.buse.korteks.game.stroopPalette
 
 /**
  * Stroop ekranı. Durumu StroopViewModel tutar; bu fonksiyon sadece durumu çizer ve
@@ -37,6 +38,7 @@ fun StroopScreen(
     onBack: () -> Unit,
     onGameFinished: (GameRecord) -> GameReward? = { null },
     bestScore: (difficulty: String) -> Int? = { null },
+    colorBlindMode: Boolean = false,
     vm: StroopViewModel = viewModel(),
 ) {
     val state = vm.state
@@ -75,8 +77,8 @@ fun StroopScreen(
                 }
             },
             choices = StroopDifficulty.entries.map { d ->
-                withBest("${d.title}  ·  ${d.colorCount} renk  ·  ${d.trialCount} soru  ·  ${formatSeconds(d.timeLimitMs)} sn", bestScore(d.name)) to
-                    { vm.start(d) }
+                withBest("${d.title}  ·  ${stroopPalette(d, colorBlindMode).size} renk  ·  ${d.trialCount} soru  ·  ${formatSeconds(d.timeLimitMs)} sn", bestScore(d.name)) to
+                    { vm.start(d, colorBlindMode) }
             },
             onBack = onBack,
         )
@@ -93,7 +95,7 @@ fun StroopScreen(
                 "Doğru" to "${state.result.correct}/${state.result.total}",
                 "Ort. tepki" to reactionText(state.result.averageReactionMs),
             ),
-            onReplay = { vm.start(state.difficulty) },
+            onReplay = { vm.start(state.difficulty, colorBlindMode) },
             onMenu = vm::backToIntro,
             reward = state.reward,
         )

@@ -48,8 +48,8 @@ class StroopViewModel(private val random: Random = Random.Default) : ViewModel()
     var state: StroopUiState by mutableStateOf(StroopUiState.Intro)
         private set
 
-    fun start(difficulty: StroopDifficulty) {
-        task = StroopTask(difficulty, random)
+    fun start(difficulty: StroopDifficulty, colorBlindSafe: Boolean = false) {
+        task = StroopTask(difficulty, random, colorBlindSafe)
         publish()
     }
 

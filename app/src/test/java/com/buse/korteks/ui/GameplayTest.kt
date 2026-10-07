@@ -301,4 +301,17 @@ class GameplayTest {
         assertEquals(false, finished.solved)
         assertEquals(0, finished.result.score)
     }
+
+    @Test
+    fun `matris - renk koru modunda her zorlukta yeterli bulmaca, hicbir hucre renkle ayrilmaz`() {
+        val puzzles = MatrixPuzzleLoader.load(RuntimeEnvironment.getApplication())
+        for (d in MatrixDifficulty.entries) {
+            val task = com.buse.korteks.game.MatrixTask(puzzles, d, Random(1), colorBlindSafe = true)
+            assertEquals("$d", d.puzzleCount, task.questions.size)
+            for (q in task.questions) {
+                val colors = (q.cells.filterNotNull() + q.options).map { it.color }.toSet()
+                assertEquals("bulmaca ${q.puzzleId}", 1, colors.size)
+            }
+        }
+    }
 }

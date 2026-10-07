@@ -13,6 +13,21 @@ enum class InkColor(val label: String) {
 }
 
 /**
+ * Renk körü dostu modda kullanılan renkler, sırası önemli: ilk 3'ü (Kolay) ve 4'ü birlikte,
+ * kırmızı-yeşil ve mavi-sarı renk körlüğü simülasyonunda en iyi ayrılan alt kümeler.
+ * (Machado ve ark. 2009 simülasyonu + CIELAB ΔE ölçümü; ayrıntı: PaletteTest)
+ */
+val COLOR_BLIND_SAFE_COLORS = listOf(InkColor.KIRMIZI, InkColor.SARI, InkColor.MAVI, InkColor.MOR)
+
+/** Oyunda kullanılacak renkler. Renk körü modunda en fazla 4 renk (güvenli alt küme). */
+fun stroopPalette(difficulty: StroopDifficulty, colorBlindSafe: Boolean): List<InkColor> =
+    if (colorBlindSafe) {
+        COLOR_BLIND_SAFE_COLORS.take(minOf(difficulty.colorCount, COLOR_BLIND_SAFE_COLORS.size))
+    } else {
+        InkColor.entries.take(difficulty.colorCount)
+    }
+
+/**
  * congruentPercent: kelime ile rengin AYNI olduğu (uyumlu, congruent) soruların yüzdesi.
  * Uyumsuz sorular (ör. KIRMIZI yazısı mavi renkte) asıl zorluğu yaratır.
  */
@@ -42,9 +57,10 @@ data class StroopTrial(
 class StroopTask(
     val difficulty: StroopDifficulty,
     random: Random = Random.Default,
+    colorBlindSafe: Boolean = false,
 ) : CognitiveTask<StroopTrial, InkColor> {
 
-    val trials: List<StroopTrial> = generateTrials(difficulty, random)
+    val trials: List<StroopTrial> = generateTrials(difficulty, random, stroopPalette(difficulty, colorBlindSafe))
 
     /** Kaçıncı sorudayız (0'dan başlar). */
     var progress = 0
@@ -89,8 +105,11 @@ class StroopTask(
     }
 }
 
-internal fun generateTrials(difficulty: StroopDifficulty, random: Random): List<StroopTrial> {
-    val palette = InkColor.entries.take(difficulty.colorCount)
+internal fun generateTrials(
+    difficulty: StroopDifficulty,
+    random: Random,
+    palette: List<InkColor> = InkColor.entries.take(difficulty.colorCount),
+): List<StroopTrial> {
     val congruentCount = difficulty.trialCount * difficulty.congruentPercent / 100
 
     // Önce uyumlu/uyumsuz bayraklarını tam oranla hazırla, sonra karıştır.

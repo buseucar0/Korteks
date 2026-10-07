@@ -86,4 +86,16 @@ class StroopTaskTest {
         repeat(t.trials.size) { t.timeout() }
         t.answer(InkColor.KIRMIZI, 100)
     }
+
+    @Test
+    fun `renk koru modunda sadece guvenli renkler, en fazla 4 renk`() {
+        for (d in StroopDifficulty.entries) {
+            val t = StroopTask(d, Random(1), colorBlindSafe = true)
+            val used = t.trials.flatMap { listOf(it.word, it.ink) }.toSet()
+            assertTrue(used.all { it in COLOR_BLIND_SAFE_COLORS })
+            assertEquals(minOf(d.colorCount, 4), t.trials.first().options.size)
+        }
+        // Kolay: 3 renk = güvenli listenin ilk 3'ü
+        assertEquals(COLOR_BLIND_SAFE_COLORS.take(3), StroopTask(StroopDifficulty.KOLAY, Random(1), colorBlindSafe = true).trials.first().options)
+    }
 }

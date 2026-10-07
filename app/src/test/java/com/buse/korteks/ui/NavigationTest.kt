@@ -87,6 +87,14 @@ class NavigationTest {
         rule.onNodeWithText("Korteks").assertExists()
     }
 
+    @Test
+    fun `renk koru modu acilinca stroop zor seviyesi 4 renkle oynanir`() {
+        rule.onNode(hasScrollAction()).performScrollToNode(hasTestTag("renk_koru_anahtari"))
+        rule.onNode(hasTestTag("renk_koru_anahtari")).performClick()
+        openTab("Dikkat")
+        rule.onNode(hasText("Zor  ·  4 renk", substring = true)).assertExists()
+    }
+
     /** Uçtan uca: gerçek kayıt (SharedPreferences) ile bir oyun bitir, ödülü ve ana menüyü kontrol et. */
     @Test
     fun `oyun bitince xp ve seri ana menude gorunur`() {

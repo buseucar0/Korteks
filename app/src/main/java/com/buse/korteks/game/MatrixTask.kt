@@ -70,11 +70,25 @@ data class MatrixPuzzleSpec(
         }
     }
 
+    /** Renk kuralı var mı? (renk körü modunda bu kural kaldırılır) */
+    val usesColor: Boolean get() = color.type != RuleType.SABIT
+
+    /**
+     * Renk körü modu için: renk sabitlenir (bütün hücreler ilk renkte). Başka değişen özellik
+     * kalmıyorsa (bulmaca sadece renkten ibaretse) null döner → bu bulmaca bu modda kullanılmaz.
+     */
+    fun withoutColorRule(): MatrixPuzzleSpec? {
+        if (!usesColor) return this
+        val stripped = copy(color = AttributeRule(RuleType.SABIT, listOf(color.values[0])))
+        val othersVary = listOf(shape.type, count.type, rotation.type).any { it != RuleType.SABIT }
+        return if (othersVary) stripped else null
+    }
+
     /**
      * Soruyu oluşturur: 8 hücre + eksik hücre (null) + seçenekler.
      * Her çeldirici, doğru cevaptan TEK bir özellikte farklıdır → tam olarak bir doğru seçenek olur.
      */
-    fun buildQuestion(optionCount: Int, random: Random): MatrixQuestion {
+    fun buildQuestion(optionCount: Int, random: Random, colorDistractors: Boolean = true): MatrixQuestion {
         val answer = answer
         // "İnandırıcı" çeldiriciler: bulmacada zaten geçen değerleri kullananlar. Önce bunlar seçilir.
         val plausible = mutableListOf<Figure>()
@@ -87,7 +101,8 @@ data class MatrixPuzzleSpec(
             }
         }
         addVariants(shape, Shape.entries, answer.shape) { answer.copy(shape = it) }
-        addVariants(color, InkColor.entries, answer.color) { answer.copy(color = it) }
+        // Renk körü modunda sadece renkte farklı seçenek üretilmez (iki seçenek aynı görünebilir)
+        if (colorDistractors) addVariants(color, InkColor.entries, answer.color) { answer.copy(color = it) }
         addVariants(count, (1..MAX_FIGURE_COUNT).toList(), answer.count) { answer.copy(count = it) }
         if (rotationVisible) addVariants(rotation, ROTATIONS, answer.rotation) { answer.copy(rotation = it) }
 
@@ -124,15 +139,18 @@ class MatrixTask(
     allPuzzles: List<MatrixPuzzleSpec>,
     val difficulty: MatrixDifficulty,
     random: Random = Random.Default,
+    colorBlindSafe: Boolean = false,
 ) : CognitiveTask<MatrixQuestion, Int> {
 
-    // Zorluğa uyan bulmacalardan rastgele seç, sonra kolaydan zora sırala
+    // Zorluğa uyan bulmacalardan rastgele seç, sonra kolaydan zora sırala.
+    // Renk körü modunda renk kuralları kaldırılır, sadece renkten ibaret bulmacalar çıkar.
     val questions: List<MatrixQuestion> = allPuzzles
+        .mapNotNull { if (colorBlindSafe) it.withoutColorRule() else it }
         .filter { it.level in difficulty.levels }
         .shuffled(random)
         .take(difficulty.puzzleCount)
         .sortedBy { it.level }
-        .map { it.buildQuestion(difficulty.optionCount, random) }
+        .map { it.buildQuestion(difficulty.optionCount, random, colorDistractors = !colorBlindSafe) }
 
     var progress = 0
         private set

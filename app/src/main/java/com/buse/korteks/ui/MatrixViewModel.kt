@@ -38,8 +38,8 @@ class MatrixViewModel(private val random: Random = Random.Default) : ViewModel()
         private set
 
     /** Bulmacalar dışarıdan gelir: JSON'u ekran okur (Context gerekir), ViewModel Android'den bağımsız kalır. */
-    fun start(puzzles: List<MatrixPuzzleSpec>, difficulty: MatrixDifficulty) {
-        task = MatrixTask(puzzles, difficulty, random)
+    fun start(puzzles: List<MatrixPuzzleSpec>, difficulty: MatrixDifficulty, colorBlindSafe: Boolean = false) {
+        task = MatrixTask(puzzles, difficulty, random, colorBlindSafe)
         publish()
     }
 

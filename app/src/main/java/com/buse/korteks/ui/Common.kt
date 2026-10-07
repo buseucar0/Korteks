@@ -39,14 +39,18 @@ import com.buse.korteks.game.InkColor
 
 // Bütün oyun ekranlarının ortak parçaları.
 
-/** game/ katmanındaki renk → ekrandaki gerçek renk. Koyu arka planda net görünecek tonlar. */
+/**
+ * game/ katmanındaki renk → ekrandaki gerçek renk.
+ * Tonlar ölçülerek seçildi: koyu arka planda okunur (kontrast ≥ 4.5), adına uyar ve renk körlüğü
+ * simülasyonunda (kırmızı/yeşil/mavi-sarı) birbirinden olabildiğince ayrılır. Ayrıntı: PaletteTest.
+ */
 fun InkColor.toColor(): Color = when (this) {
-    InkColor.KIRMIZI -> Color(0xFFF44336)
-    InkColor.MAVI -> Color(0xFF42A5F5)
-    InkColor.YESIL -> Color(0xFF66BB6A)
-    InkColor.SARI -> Color(0xFFFFEB3B)
-    InkColor.MOR -> Color(0xFFAB47BC)
-    InkColor.TURUNCU -> Color(0xFFFF9800)
+    InkColor.KIRMIZI -> Color(0xFFEE2F33)
+    InkColor.MAVI -> Color(0xFF067BF9)
+    InkColor.YESIL -> Color(0xFF53C679)
+    InkColor.SARI -> Color(0xFFFFF200)
+    InkColor.MOR -> Color(0xFFC285D6)
+    InkColor.TURUNCU -> Color(0xFFF68C00)
 }
 
 @Composable

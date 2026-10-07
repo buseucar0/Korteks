@@ -54,6 +54,7 @@ fun MatrixScreen(
     onBack: () -> Unit,
     onGameFinished: (GameRecord) -> GameReward? = { null },
     bestScore: (difficulty: String) -> Int? = { null },
+    colorBlindMode: Boolean = false,
     vm: MatrixViewModel = viewModel(),
 ) {
     val context = LocalContext.current
@@ -88,7 +89,7 @@ fun MatrixScreen(
                 "Kuralı bul ve sağ alttaki eksik hücreye uyan seçeneği seç.",
             choices = MatrixDifficulty.entries.map { d ->
                 withBest("${d.title}  ·  ${d.puzzleCount} bulmaca  ·  ${d.optionCount} seçenek  ·  ${d.timeLimitMs / 1000} sn", bestScore(d.name)) to
-                    { vm.start(puzzles, d) }
+                    { vm.start(puzzles, d, colorBlindMode) }
             },
             onBack = onBack,
         )
@@ -105,7 +106,7 @@ fun MatrixScreen(
                 "Doğru" to "${state.result.correct}/${state.result.total}",
                 "Ort. süre" to if (state.result.averageReactionMs > 0) "${formatSeconds(state.result.averageReactionMs)} sn" else "—",
             ),
-            onReplay = { vm.start(puzzles, state.difficulty) },
+            onReplay = { vm.start(puzzles, state.difficulty, colorBlindMode) },
             onMenu = vm::backToIntro,
             reward = state.reward,
         )
