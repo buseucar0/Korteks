@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -111,7 +112,11 @@ internal fun HanoiPlaying(
     onTimeout: (gameNo: Int) -> Unit,
 ) {
     var selected by remember { mutableStateOf<Int?>(null) }
-    val elapsedMs by rememberTrialClock(state.gameNo, state.timeLimitMs, initialElapsedMs, onTick) { onTimeout(state.gameNo) }
+    val elapsed = rememberTrialClock(state.gameNo, state.timeLimitMs, initialElapsedMs, onTick) { onTimeout(state.gameNo) }
+    // Kalan saniye: saniyede bir değişir (derivedStateOf), ekran her karede yenilenmez
+    val remainingSec by remember(elapsed, state.timeLimitMs) {
+        derivedStateOf { (state.timeLimitMs - elapsed.value).coerceAtLeast(0) / 1000 }
+    }
 
     // pointerInput bir kez kurulur; içinden her zaman en güncel durumu okumak için rememberUpdatedState
     val latestState by rememberUpdatedState(state)
@@ -127,10 +132,9 @@ internal fun HanoiPlaying(
     }
 
     Column(Modifier.fillMaxSize().padding(20.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-        ProgressHeader(
-            "Hamle: ${state.moves}  ·  En az: ${state.minimumMoves}  ·  ${(state.timeLimitMs - elapsedMs).coerceAtLeast(0) / 1000} sn",
-            1f - elapsedMs.toFloat() / state.timeLimitMs,
-        )
+        ProgressHeader("Hamle: ${state.moves}  ·  En az: ${state.minimumMoves}  ·  $remainingSec sn") {
+            1f - elapsed.value.toFloat() / state.timeLimitMs
+        }
         Spacer(Modifier.height(24.dp))
         Text(
             if (selected == null) "Taşımak istediğin diskin çubuğuna dokun" else "Nereye? Hedef çubuğa dokun",

@@ -96,9 +96,13 @@ fun rememberTrialClock(
     return elapsed
 }
 
-/** Oyun ekranının üstündeki bilgi yazısı (ör. "5 / 16") ve kalan süre çubuğu (null = çubuk yok). */
+/**
+ * Oyun ekranının üstündeki bilgi yazısı (ör. "5 / 16") ve kalan süre çubuğu (null = çubuk yok).
+ * remainingFraction bir lambda: değer sadece çizim aşamasında okunur. Sayaç her karede değişse de
+ * ekranın tamamı yeniden oluşturulmaz (recompose), sadece çubuk yeniden boyanır.
+ */
 @Composable
-fun ProgressHeader(label: String, remainingFraction: Float?) {
+fun ProgressHeader(label: String, remainingFraction: (() -> Float)?) {
     Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
         Text(
             label,
@@ -108,7 +112,7 @@ fun ProgressHeader(label: String, remainingFraction: Float?) {
         if (remainingFraction != null) {
             Spacer(Modifier.height(8.dp))
             LinearProgressIndicator(
-                progress = { remainingFraction.coerceIn(0f, 1f) },
+                progress = { remainingFraction().coerceIn(0f, 1f) },
                 modifier = Modifier.fillMaxWidth().height(8.dp),
             )
         }

@@ -113,10 +113,12 @@ internal fun StroopPlaying(
     onTimeout: (trialNumber: Int) -> Unit,
 ) {
     // Anahtar soru numarası: yeni soru gelince sayaç sıfırdan başlar
-    val elapsedMs by rememberTrialClock(state.number, state.timeLimitMs) { onTimeout(state.number) }
+    // State nesnesi olarak tutulur, .value sadece gerektiği yerde okunur (çizimde ve tıklama anında):
+    // gövdede okunsaydı ekran saniyede ~60 kez yeniden oluşturulurdu.
+    val elapsed = rememberTrialClock(state.number, state.timeLimitMs) { onTimeout(state.number) }
 
     Column(Modifier.fillMaxSize().padding(20.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-        ProgressHeader("${state.number} / ${state.total}", 1f - elapsedMs.toFloat() / state.timeLimitMs)
+        ProgressHeader("${state.number} / ${state.total}") { 1f - elapsed.value.toFloat() / state.timeLimitMs }
 
         Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
             Text(state.trial.word.label, color = state.trial.ink.toColor(), fontSize = 64.sp, fontWeight = FontWeight.Black)
@@ -127,7 +129,7 @@ internal fun StroopPlaying(
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 row.forEach { color ->
                     Button(
-                        onClick = { onAnswer(color, elapsedMs, state.number) },
+                        onClick = { onAnswer(color, elapsed.value, state.number) },
                         modifier = Modifier.weight(1f).height(72.dp),
                         colors = neutralButtonColors(),
                     ) {

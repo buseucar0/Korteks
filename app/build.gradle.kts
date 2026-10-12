@@ -17,6 +17,19 @@ android {
         versionName = "0.1"
     }
 
+    buildTypes {
+        release {
+            // R8: kullanılmayan kodu ve kaynakları siler, isimleri kısaltır → APK küçülür, uygulama hızlanır.
+            // Gömülüdeki -Os + --gc-sections (kullanılmayan fonksiyonları linker'da atmak) gibi.
+            isMinifyEnabled = true
+            isShrinkResources = true
+            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+            // ŞİMDİLİK debug anahtarıyla imzalanır: release APK'yı telefonda deneyebilmek için.
+            // Play Store'dan ÖNCE gerçek yayın anahtarıyla (keystore) değiştirilmeli.
+            signingConfig = signingConfigs.getByName("debug")
+        }
+    }
+
     buildFeatures {
         compose = true
     }

@@ -120,11 +120,12 @@ internal fun MatrixPlaying(
     onAnswer: (optionIndex: Int, reactionMs: Long, trialNumber: Int) -> Unit,
     onTimeout: (trialNumber: Int) -> Unit,
 ) {
-    val elapsedMs by rememberTrialClock(state.number, state.timeLimitMs) { onTimeout(state.number) }
+    // .value sadece çizimde ve tıklama anında okunur (bkz. StroopPlaying)
+    val elapsed = rememberTrialClock(state.number, state.timeLimitMs) { onTimeout(state.number) }
     val q = state.question
 
     Column(Modifier.fillMaxSize().padding(20.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-        ProgressHeader("${state.number} / ${state.total}", 1f - elapsedMs.toFloat() / state.timeLimitMs)
+        ProgressHeader("${state.number} / ${state.total}") { 1f - elapsed.value.toFloat() / state.timeLimitMs }
         Spacer(Modifier.height(20.dp))
 
         // 3x3 tablo: kalan alana sığan en büyük kare (genişlik ya da yükseklikten küçük olanı).
@@ -164,7 +165,7 @@ internal fun MatrixPlaying(
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 row.forEach { (index, figure) ->
                     Card(
-                        onClick = { onAnswer(index, elapsedMs, state.number) },
+                        onClick = { onAnswer(index, elapsed.value, state.number) },
                         modifier = Modifier.weight(1f).aspectRatio(if (perRow == 2) 1.6f else 1f).testTag("secenek_$index"),
                         colors = CardDefaults.cardColors(containerColor = Color(0xFF2C2C2C)),
                     ) {

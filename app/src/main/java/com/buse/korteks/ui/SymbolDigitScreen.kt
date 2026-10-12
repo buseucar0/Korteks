@@ -16,7 +16,9 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -104,11 +106,14 @@ internal fun SymbolDigitPlaying(
     onTimeout: (gameNo: Int) -> Unit,
 ) {
     // Süre tüm oturum için: anahtar oyun numarası, sayaç oyun boyunca bir kez çalışır
-    val elapsedMs by rememberTrialClock(state.gameNo, state.durationMs, initialElapsedMs, onTick) { onTimeout(state.gameNo) }
-    val remainingSec = (state.durationMs - elapsedMs).coerceAtLeast(0) / 1000
+    val elapsed = rememberTrialClock(state.gameNo, state.durationMs, initialElapsedMs, onTick) { onTimeout(state.gameNo) }
+    // derivedStateOf: sayaç her karede değişir ama kalan saniye saniyede bir; ekran sadece o zaman yenilenir
+    val remainingSec by remember(elapsed, state.durationMs) {
+        derivedStateOf { (state.durationMs - elapsed.value).coerceAtLeast(0) / 1000 }
+    }
 
     Column(Modifier.fillMaxSize().padding(20.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-        ProgressHeader("Kalan: $remainingSec sn  ·  Doğru: ${state.correct}", 1f - elapsedMs.toFloat() / state.durationMs)
+        ProgressHeader("Kalan: $remainingSec sn  ·  Doğru: ${state.correct}") { 1f - elapsed.value.toFloat() / state.durationMs }
         Spacer(Modifier.height(20.dp))
 
         // Anahtar (key): üstte sembol, altta rakam

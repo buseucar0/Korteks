@@ -20,6 +20,7 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -121,20 +122,21 @@ internal fun NBackPlaying(
     var firstPressMs by remember(state.number) { mutableLongStateOf(0L) }
 
     // Adım süresi dolunca o adımdaki basışlar değerlendirilir, sonraki adıma geçilir
-    val elapsedMs by rememberTrialClock(state.number, state.stepMs) {
+    val elapsed = rememberTrialClock(state.number, state.stepMs) {
         onStepEnded(NBackResponse(positionPressed, letterPressed), firstPressMs, state.number)
     }
 
-    val visible = elapsedMs < STIMULUS_VISIBLE_MS
+    // Harf görünür mü? Adımda sadece bir kez değişir: derivedStateOf ile ekran o an yenilenir, her karede değil
+    val visible by remember(elapsed) { derivedStateOf { elapsed.value < STIMULUS_VISIBLE_MS } }
 
     fun press(isPosition: Boolean) {
         if (!state.scored) return
-        if (firstPressMs == 0L) firstPressMs = elapsedMs.coerceAtLeast(1)
+        if (firstPressMs == 0L) firstPressMs = elapsed.value.coerceAtLeast(1)
         if (isPosition) positionPressed = true else letterPressed = true
     }
 
     Column(Modifier.fillMaxSize().padding(20.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-        ProgressHeader("${state.number} / ${state.total}", 1f - elapsedMs.toFloat() / state.stepMs)
+        ProgressHeader("${state.number} / ${state.total}") { 1f - elapsed.value.toFloat() / state.stepMs }
         Spacer(Modifier.height(12.dp))
         Text(
             if (state.scored) "${state.n} adım öncekiyle aynı mı?" else "Ezberle… (${state.n - state.number + 1} adım sonra başlıyor)",
