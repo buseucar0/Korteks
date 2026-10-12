@@ -9,7 +9,9 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.buse.korteks.game.GameRecord
 import com.buse.korteks.game.GameReward
@@ -19,6 +21,7 @@ import com.buse.korteks.ui.CorsiScreen
 import com.buse.korteks.ui.HanoiScreen
 import com.buse.korteks.ui.HomeScreen
 import com.buse.korteks.ui.MatrixScreen
+import com.buse.korteks.ui.NoHapticFeedback
 import com.buse.korteks.ui.NBackScreen
 import com.buse.korteks.ui.ProfileScreen
 import com.buse.korteks.ui.ProgressViewModel
@@ -62,41 +65,50 @@ class MainActivity : ComponentActivity() {
                 // Geri tuşunu her oyun ekranı kendisi yönetir (oyun → giriş → ana menü).
                 // Ana menüdeyken dinleyici yok: sistem uygulamayı kapatır.
 
-                // safeDrawingPadding: içerik durum çubuğunun (saat, pil) altına girmesin
-                Box(Modifier.safeDrawingPadding()) {
-                    when (screen) {
-                        Screen.HOME -> HomeScreen(
-                            onOpen = { screen = it },
-                            levelInfo = progressVm.levelInfo,
-                            streak = progressVm.currentStreak(),
-                            longestStreak = progressVm.progress.longestStreak,
-                            dailyPlan = progressVm.dailyPlan(),
-                            dailyDone = progressVm.dailyDone(),
-                            colorBlindMode = settingsVm.colorBlindMode,
-                            onColorBlindModeChange = settingsVm::updateColorBlindMode,
-                        )
-                        Screen.STROOP -> StroopScreen(
-                            onBack = goHome,
-                            onGameFinished = record,
-                            bestScore = best(GameType.STROOP),
-                            colorBlindMode = settingsVm.colorBlindMode,
-                        )
-                        Screen.MATRIX -> MatrixScreen(
-                            onBack = goHome,
-                            onGameFinished = record,
-                            bestScore = best(GameType.MATRIX),
-                            colorBlindMode = settingsVm.colorBlindMode,
-                        )
-                        Screen.NBACK -> NBackScreen(onBack = goHome, onGameFinished = record, bestScore = best(GameType.NBACK))
-                        Screen.SPEED -> SymbolDigitScreen(onBack = goHome, onGameFinished = record, bestScore = best(GameType.SPEED))
-                        Screen.CORSI -> CorsiScreen(onBack = goHome, onGameFinished = record, bestScore = best(GameType.CORSI))
-                        Screen.HANOI -> HanoiScreen(onBack = goHome, onGameFinished = record, bestScore = best(GameType.HANOI))
-                        Screen.PROFILE -> ProfileScreen(
-                            onBack = goHome,
-                            profile = progressVm.profile(),
-                            levelInfo = progressVm.levelInfo,
-                            streak = progressVm.currentStreak(),
-                        )
+                // Titreşim ayarı kapalıysa bütün ekranlara "hiçbir şey yapmayan" titreşim verilir:
+                // oyun ekranlarının ayarı bilmesine gerek kalmaz (CompositionLocal = ağaç boyunca örtük parametre)
+                val systemHaptics = LocalHapticFeedback.current
+                CompositionLocalProvider(
+                    LocalHapticFeedback provides if (settingsVm.vibration) systemHaptics else NoHapticFeedback,
+                ) {
+                    // safeDrawingPadding: içerik durum çubuğunun (saat, pil) altına girmesin
+                    Box(Modifier.safeDrawingPadding()) {
+                        when (screen) {
+                            Screen.HOME -> HomeScreen(
+                                onOpen = { screen = it },
+                                levelInfo = progressVm.levelInfo,
+                                streak = progressVm.currentStreak(),
+                                longestStreak = progressVm.progress.longestStreak,
+                                dailyPlan = progressVm.dailyPlan(),
+                                dailyDone = progressVm.dailyDone(),
+                                colorBlindMode = settingsVm.colorBlindMode,
+                                onColorBlindModeChange = settingsVm::updateColorBlindMode,
+                                vibration = settingsVm.vibration,
+                                onVibrationChange = settingsVm::updateVibration,
+                            )
+                            Screen.STROOP -> StroopScreen(
+                                onBack = goHome,
+                                onGameFinished = record,
+                                bestScore = best(GameType.STROOP),
+                                colorBlindMode = settingsVm.colorBlindMode,
+                            )
+                            Screen.MATRIX -> MatrixScreen(
+                                onBack = goHome,
+                                onGameFinished = record,
+                                bestScore = best(GameType.MATRIX),
+                                colorBlindMode = settingsVm.colorBlindMode,
+                            )
+                            Screen.NBACK -> NBackScreen(onBack = goHome, onGameFinished = record, bestScore = best(GameType.NBACK))
+                            Screen.SPEED -> SymbolDigitScreen(onBack = goHome, onGameFinished = record, bestScore = best(GameType.SPEED))
+                            Screen.CORSI -> CorsiScreen(onBack = goHome, onGameFinished = record, bestScore = best(GameType.CORSI))
+                            Screen.HANOI -> HanoiScreen(onBack = goHome, onGameFinished = record, bestScore = best(GameType.HANOI))
+                            Screen.PROFILE -> ProfileScreen(
+                                onBack = goHome,
+                                profile = progressVm.profile(),
+                                levelInfo = progressVm.levelInfo,
+                                streak = progressVm.currentStreak(),
+                            )
+                        }
                     }
                 }
             }

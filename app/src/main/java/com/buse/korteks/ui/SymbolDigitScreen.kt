@@ -21,6 +21,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -44,6 +45,7 @@ fun SymbolDigitScreen(
     vm: SymbolDigitViewModel = viewModel(),
 ) {
     val state = vm.state
+    val haptics = LocalHapticFeedback.current
 
     /** Hamleyi uygula; hamle oyunu bitirdiyse (Playing → Finished) ilerlemeyi bir kez kaydet. */
     fun move(action: () -> Unit) {
@@ -78,7 +80,7 @@ fun SymbolDigitScreen(
             state,
             initialElapsedMs = vm.sessionElapsedMs,
             onTick = { vm.sessionElapsedMs = it },
-            onAnswer = { digit, answerNo -> move { vm.answer(digit, answerNo) } },
+            onAnswer = { digit, answerNo -> move { haptics.answer(vm.answer(digit, answerNo)) } },
             onTimeout = { gameNo -> move { vm.timeout(gameNo) } },
         )
         is SpeedUiState.Finished -> ResultScreen(

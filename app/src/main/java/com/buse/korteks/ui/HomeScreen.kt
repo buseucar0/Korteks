@@ -57,6 +57,8 @@ fun HomeScreen(
     dailyDone: Set<GameType> = emptySet(),
     colorBlindMode: Boolean = false,
     onColorBlindModeChange: (Boolean) -> Unit = {},
+    vibration: Boolean = true,
+    onVibrationChange: (Boolean) -> Unit = {},
 ) {
     // Bütün sayfa tek kaydırılabilir liste: kartlar çoğaldıkça küçük ekranlarda da sığsın
     LazyColumn(
@@ -82,7 +84,7 @@ fun HomeScreen(
         }
         item { ProfileEntryCard(onOpen) }
         items(allTabs) { tab -> TabCard(tab, onOpen) }
-        item { SettingsCard(colorBlindMode, onColorBlindModeChange) }
+        item { SettingsCard(colorBlindMode, onColorBlindModeChange, vibration, onVibrationChange) }
         item { Spacer(Modifier.height(12.dp)) }
     }
 }
@@ -172,24 +174,41 @@ private fun DailyCard(plan: List<GameType>, done: Set<GameType>, onOpen: (Screen
 }
 
 @Composable
-private fun SettingsCard(colorBlindMode: Boolean, onColorBlindModeChange: (Boolean) -> Unit) {
+private fun SettingsCard(
+    colorBlindMode: Boolean,
+    onColorBlindModeChange: (Boolean) -> Unit,
+    vibration: Boolean,
+    onVibrationChange: (Boolean) -> Unit,
+) {
     Card(Modifier.fillMaxWidth()) {
-        Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
-            Column(Modifier.weight(1f)) {
-                Text("🎨 Renk körü dostu mod", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                Text(
-                    "Dikkat'te en kolay ayırt edilen 4 renk, Mantık'ta renk kuralı olmayan bulmacalar",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-            Spacer(Modifier.width(12.dp))
-            Switch(
+        Column(Modifier.padding(vertical = 8.dp)) {
+            SettingRow(
+                title = "🎨 Renk körü dostu mod",
+                description = "Dikkat'te en kolay ayırt edilen 4 renk, Mantık'ta renk kuralı olmayan bulmacalar",
                 checked = colorBlindMode,
                 onCheckedChange = onColorBlindModeChange,
-                modifier = Modifier.testTag("renk_koru_anahtari"),
+                tag = "renk_koru_anahtari",
+            )
+            SettingRow(
+                title = "📳 Titreşim",
+                description = "Doğru ve yanlış cevapta kısa titreşim",
+                checked = vibration,
+                onCheckedChange = onVibrationChange,
+                tag = "titresim_anahtari",
             )
         }
+    }
+}
+
+@Composable
+private fun SettingRow(title: String, description: String, checked: Boolean, onCheckedChange: (Boolean) -> Unit, tag: String) {
+    Row(Modifier.padding(horizontal = 16.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+        Column(Modifier.weight(1f)) {
+            Text(title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+            Text(description, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+        Spacer(Modifier.width(12.dp))
+        Switch(checked = checked, onCheckedChange = onCheckedChange, modifier = Modifier.testTag(tag))
     }
 }
 

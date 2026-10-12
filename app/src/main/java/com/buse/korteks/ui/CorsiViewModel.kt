@@ -52,13 +52,17 @@ class CorsiViewModel(private val random: Random = Random.Default) : ViewModel() 
         publishTrial()
     }
 
-    /** Dokunuşlar tamamlandı. Sonuç hemen değil, "Doğru/Yanlış" geri bildirimi olarak gösterilir. */
-    fun answer(taps: List<Int>, reactionMs: Long, trialNo: Int) {
-        val s = state as? CorsiUiState.Playing ?: return
-        val t = task ?: return
-        if (s.trialNo != trialNo || s.feedback != null || t.isFinished) return
+    /**
+     * Dokunuşlar tamamlandı. Sonuç hemen değil, "Doğru/Yanlış" geri bildirimi olarak gösterilir.
+     * Dönüş: doğruysa true, yanlışsa false, cevap yok sayıldıysa null.
+     */
+    fun answer(taps: List<Int>, reactionMs: Long, trialNo: Int): Boolean? {
+        val s = state as? CorsiUiState.Playing ?: return null
+        val t = task ?: return null
+        if (s.trialNo != trialNo || s.feedback != null || t.isFinished) return null
         val ok = t.answer(taps, reactionMs)
         state = s.copy(feedback = ok, span = t.span)
+        return ok
     }
 
     /** Geri bildirim gösterildi: sonraki deneme ya da sonuç ekranı. */

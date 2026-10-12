@@ -28,6 +28,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
@@ -68,6 +69,7 @@ fun CorsiScreen(
     vm: CorsiViewModel = viewModel(),
 ) {
     val state = vm.state
+    val haptics = LocalHapticFeedback.current
 
     /** Hamleyi uygula; hamle oyunu bitirdiyse (Playing → Finished) ilerlemeyi bir kez kaydet. */
     fun move(action: () -> Unit) {
@@ -101,7 +103,7 @@ fun CorsiScreen(
         )
         is CorsiUiState.Playing -> CorsiPlaying(
             state,
-            onAnswer = { taps, reactionMs, trialNo -> vm.answer(taps, reactionMs, trialNo) },
+            onAnswer = { taps, reactionMs, trialNo -> haptics.answer(vm.answer(taps, reactionMs, trialNo)) },
             onNext = { trialNo -> move { vm.next(trialNo) } },
         )
         is CorsiUiState.Finished -> ResultScreen(

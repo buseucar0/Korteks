@@ -30,6 +30,8 @@ import androidx.compose.runtime.withFrameMillis
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.hapticfeedback.HapticFeedback
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -232,6 +234,23 @@ private fun StatBox(label: String, value: String, modifier: Modifier = Modifier)
             Text(label, style = MaterialTheme.typography.labelMedium)
         }
     }
+}
+
+/**
+ * Cevaba göre kısa titreşim: doğru → hafif onay, yanlış → belirgin ret, yok sayıldı (null) → hiçbir şey.
+ * Android telefonun sistem titreşim ayarına da uyar.
+ */
+fun HapticFeedback.answer(correct: Boolean?) {
+    when (correct) {
+        true -> performHapticFeedback(HapticFeedbackType.Confirm)
+        false -> performHapticFeedback(HapticFeedbackType.Reject)
+        null -> Unit
+    }
+}
+
+/** Titreşim kapalıyken ekranlara verilen "hiçbir şey yapmayan" titreşim (bkz. MainActivity). */
+object NoHapticFeedback : HapticFeedback {
+    override fun performHapticFeedback(hapticFeedbackType: HapticFeedbackType) = Unit
 }
 
 /** Zorluk butonu metni: rekor varsa ikinci satırda gösterilir. */

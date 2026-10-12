@@ -20,6 +20,7 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
@@ -49,6 +50,7 @@ fun HanoiScreen(
     vm: HanoiViewModel = viewModel(),
 ) {
     val state = vm.state
+    val haptics = LocalHapticFeedback.current
 
     /** Hamleyi uygula; hamle oyunu bitirdiyse (Playing → Finished) ilerlemeyi bir kez kaydet. */
     fun move(action: () -> Unit) {
@@ -84,7 +86,7 @@ fun HanoiScreen(
             state,
             initialElapsedMs = vm.sessionElapsedMs,
             onTick = { vm.sessionElapsedMs = it },
-            onMove = { from, to -> move { vm.move(from, to) } },
+            onMove = { from, to -> move { if (vm.move(from, to) == false) haptics.answer(false) } },
             onTimeout = { gameNo -> move { vm.timeout(gameNo) } },
         )
         is HanoiUiState.Finished -> ResultScreen(

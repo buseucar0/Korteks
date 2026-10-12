@@ -16,4 +16,12 @@ class SettingsStoreTest {
         SettingsStore(app).colorBlindMode = true
         assertTrue(SettingsStore(app).colorBlindMode) // yeniden açılmış gibi
     }
+
+    @Test
+    fun `titresim acik baslar ve kapatilinca kaydedilir`() {
+        val app = RuntimeEnvironment.getApplication()
+        assertTrue(SettingsStore(app).vibration)
+        SettingsStore(app).vibration = false
+        assertFalse(SettingsStore(app).vibration)
+    }
 }

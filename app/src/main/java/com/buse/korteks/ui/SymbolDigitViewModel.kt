@@ -57,13 +57,17 @@ class SymbolDigitViewModel(private val random: Random = Random.Default) : ViewMo
         publish()
     }
 
-    /** Tepki süresi = son cevaptan bu yana geçen oturum süresi. */
-    fun answer(digit: Int, answerNo: Int) {
-        val t = task ?: return
-        if (t.isFinished || t.correct + t.wrong + 1 != answerNo) return
-        t.answer(digit, sessionElapsedMs - lastAnswerAtMs)
+    /**
+     * Tepki süresi = son cevaptan bu yana geçen oturum süresi.
+     * Dönüş: doğruysa true, yanlışsa false, cevap yok sayıldıysa null.
+     */
+    fun answer(digit: Int, answerNo: Int): Boolean? {
+        val t = task ?: return null
+        if (t.isFinished || t.correct + t.wrong + 1 != answerNo) return null
+        val correct = t.answer(digit, sessionElapsedMs - lastAnswerAtMs)
         lastAnswerAtMs = sessionElapsedMs
         publish()
+        return correct
     }
 
     /** Oturum süresi doldu. gameNo: eski oyunun sayacı yeni oyunu bitirmesin. */

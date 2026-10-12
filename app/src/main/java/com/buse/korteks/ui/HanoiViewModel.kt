@@ -51,11 +51,16 @@ class HanoiViewModel : ViewModel() {
         publish()
     }
 
-    /** Hamle kurala uygunsa uygular. Çözüm süresi = oyunda geçen süre. */
-    fun move(from: Int, to: Int) {
-        val t = task ?: return
-        if (t.isFinished) return
-        if (t.answer(HanoiMove(from, to), sessionElapsedMs)) publish()
+    /**
+     * Hamle kurala uygunsa uygular. Çözüm süresi = oyunda geçen süre.
+     * Dönüş: hamle uygulandıysa true, kural dışıysa false, oyun bittiyse null.
+     */
+    fun move(from: Int, to: Int): Boolean? {
+        val t = task ?: return null
+        if (t.isFinished) return null
+        val legal = t.answer(HanoiMove(from, to), sessionElapsedMs)
+        if (legal) publish()
+        return legal
     }
 
     fun timeout(gameNo: Int) {

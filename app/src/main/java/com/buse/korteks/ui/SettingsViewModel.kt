@@ -20,4 +20,13 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
         colorBlindMode = enabled
         store.colorBlindMode = enabled
     }
+
+    /** Cevaplarda kısa titreşim (varsayılan açık). */
+    var vibration: Boolean by mutableStateOf(store.vibration)
+        private set
+
+    fun updateVibration(enabled: Boolean) {
+        vibration = enabled
+        store.vibration = enabled
+    }
 }

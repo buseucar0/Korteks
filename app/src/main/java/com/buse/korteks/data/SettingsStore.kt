@@ -11,7 +11,12 @@ class SettingsStore(context: Context) {
         get() = prefs.getBoolean(KEY_COLOR_BLIND, false)
         set(value) = prefs.edit().putBoolean(KEY_COLOR_BLIND, value).apply()
 
+    var vibration: Boolean
+        get() = prefs.getBoolean(KEY_VIBRATION, true)
+        set(value) = prefs.edit().putBoolean(KEY_VIBRATION, value).apply()
+
     private companion object {
         const val KEY_COLOR_BLIND = "renk_koru_modu"
+        const val KEY_VIBRATION = "titresim"
     }
 }

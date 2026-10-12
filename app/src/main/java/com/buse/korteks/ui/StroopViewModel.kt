@@ -57,10 +57,12 @@ class StroopViewModel(private val random: Random = Random.Default) : ViewModel()
      * trialNumber: cevabın hangi soruya verildiği. Ekrandaki soru numarasıyla aynı değilse
      * (ör. aynı karede iki tıklama) cevap yok sayılır.
      */
-    fun answer(color: InkColor, reactionMs: Long, trialNumber: Int) {
-        val t = activeTask(trialNumber) ?: return
-        t.answer(color, reactionMs)
+    /** Dönüş: doğruysa true, yanlışsa false, cevap yok sayıldıysa (çift tıklama) null. */
+    fun answer(color: InkColor, reactionMs: Long, trialNumber: Int): Boolean? {
+        val t = activeTask(trialNumber) ?: return null
+        val correct = t.answer(color, reactionMs)
         publish()
+        return correct
     }
 
     /** Süre doldu. Eski bir sayaç (önceki sorunun) yeni soruyu atlatmasın diye numara kontrol edilir. */

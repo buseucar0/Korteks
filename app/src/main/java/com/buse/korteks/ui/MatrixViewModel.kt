@@ -43,10 +43,12 @@ class MatrixViewModel(private val random: Random = Random.Default) : ViewModel()
         publish()
     }
 
-    fun answer(optionIndex: Int, reactionMs: Long, trialNumber: Int) {
-        val t = activeTask(trialNumber) ?: return
-        t.answer(optionIndex, reactionMs)
+    /** Dönüş: doğruysa true, yanlışsa false, cevap yok sayıldıysa null. */
+    fun answer(optionIndex: Int, reactionMs: Long, trialNumber: Int): Boolean? {
+        val t = activeTask(trialNumber) ?: return null
+        val correct = t.answer(optionIndex, reactionMs)
         publish()
+        return correct
     }
 
     fun timeout(trialNumber: Int) {

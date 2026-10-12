@@ -26,6 +26,10 @@ import com.buse.korteks.game.TaskResult
 import kotlin.random.Random
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.ui.hapticfeedback.HapticFeedback
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -313,5 +317,34 @@ class GameplayTest {
                 assertEquals("bulmaca ${q.puzzleId}", 1, colors.size)
             }
         }
+    }
+
+    // ---------------------------------------------------------------- Titreşim
+
+    /** Gerçek titreşim yerine istekleri kaydeden sahte nesne (CompositionLocal ile ekrana verilir). */
+    private class RecordingHaptics : HapticFeedback {
+        val types = mutableListOf<HapticFeedbackType>()
+        override fun performHapticFeedback(hapticFeedbackType: HapticFeedbackType) {
+            types += hapticFeedbackType
+        }
+    }
+
+    @Test
+    fun `titresim - dogru cevapta onay, yanlista ret, yok sayilan cevapta hicbir sey`() {
+        val haptics = RecordingHaptics()
+        val vm = StroopViewModel(Random(2))
+        vm.start(StroopDifficulty.ZOR) // ZOR: hepsi uyumsuz → kelimenin anlamı her zaman yanlış
+        rule.mainClock.autoAdvance = false
+        rule.setContent {
+            AppTheme { CompositionLocalProvider(LocalHapticFeedback provides haptics) { StroopScreen(onBack = {}, vm = vm) } }
+        }
+        frame()
+
+        tap(button(vm.playing.trial.ink.label))
+        tap(button(vm.playing.trial.word.label))
+        assertEquals(listOf(HapticFeedbackType.Confirm, HapticFeedbackType.Reject), haptics.types)
+
+        vm.answer(vm.playing.trial.ink, 100, trialNumber = 1) // eski soruya geç kalmış cevap: yok sayılır
+        assertEquals(2, haptics.types.size)
     }
 }

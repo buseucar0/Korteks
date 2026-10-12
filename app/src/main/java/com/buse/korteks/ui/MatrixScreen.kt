@@ -24,6 +24,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
@@ -61,6 +62,7 @@ fun MatrixScreen(
     // JSON dosyası bir kez okunur, ekran yeniden çizildikçe tekrar okunmaz
     val puzzles = remember { MatrixPuzzleLoader.load(context) }
     val state = vm.state
+    val haptics = LocalHapticFeedback.current
 
     /** Hamleyi uygula; hamle oyunu bitirdiyse (Playing → Finished) ilerlemeyi bir kez kaydet. */
     fun move(action: () -> Unit) {
@@ -95,7 +97,7 @@ fun MatrixScreen(
         )
         is MatrixUiState.Playing -> MatrixPlaying(
             state,
-            onAnswer = { index, reactionMs, number -> move { vm.answer(index, reactionMs, number) } },
+            onAnswer = { index, reactionMs, number -> move { haptics.answer(vm.answer(index, reactionMs, number)) } },
             onTimeout = { number -> move { vm.timeout(number) } },
         )
         is MatrixUiState.Finished -> ResultScreen(

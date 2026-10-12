@@ -17,6 +17,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -42,6 +43,7 @@ fun StroopScreen(
     vm: StroopViewModel = viewModel(),
 ) {
     val state = vm.state
+    val haptics = LocalHapticFeedback.current
 
     /**
      * Bir oyun hamlesini (cevap / süre dolması) uygular. Hamle oyunu bitirdiyse (Playing → Finished)
@@ -84,7 +86,7 @@ fun StroopScreen(
         )
         is StroopUiState.Playing -> StroopPlaying(
             state,
-            onAnswer = { color, reactionMs, number -> move { vm.answer(color, reactionMs, number) } },
+            onAnswer = { color, reactionMs, number -> move { haptics.answer(vm.answer(color, reactionMs, number)) } },
             onTimeout = { number -> move { vm.timeout(number) } },
         )
         is StroopUiState.Finished -> ResultScreen(
