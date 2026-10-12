@@ -27,9 +27,11 @@ data class NBackResponse(val position: Boolean, val letter: Boolean)
 class NBackTask(
     val difficulty: NBackDifficulty,
     random: Random = Random.Default,
+    /** Puanlanan adım sayısı; alıştırma turunda daha kısa tutulur. */
+    val scoredSteps: Int = difficulty.scoredSteps,
 ) : CognitiveTask<NBackStimulus, NBackResponse> {
 
-    val stimuli: List<NBackStimulus> = generateStimuli(difficulty, random)
+    val stimuli: List<NBackStimulus> = generateStimuli(difficulty, random, scoredSteps)
 
     var progress = 0
         private set
@@ -87,24 +89,28 @@ class NBackTask(
     /** Doğru = isabet + doğru ret (iki kanal ayrı sayılır). N büyüdükçe puan çarpanı artar. */
     override fun result() = TaskResult(
         correct = hits + correctRejections,
-        total = 2 * difficulty.scoredSteps,
+        total = 2 * scoredSteps,
         averageReactionMs = if (hitReactionTimes.isEmpty()) 0 else hitReactionTimes.average().toLong(),
         score = ((hits * 100 + correctRejections * 20 - falseAlarms * 50).coerceAtLeast(0)) * n,
     )
 }
 
-internal fun generateStimuli(difficulty: NBackDifficulty, random: Random): List<NBackStimulus> {
+internal fun generateStimuli(
+    difficulty: NBackDifficulty,
+    random: Random,
+    scoredSteps: Int = difficulty.scoredSteps,
+): List<NBackStimulus> {
     val n = difficulty.n
-    val matchCount = difficulty.scoredSteps * MATCH_PERCENT / 100
+    val matchCount = scoredSteps * MATCH_PERCENT / 100
 
     // Stroop'taki gibi: eşleşme bayraklarını tam sayıda hazırla, karıştır → oran her oyunda aynı
-    fun flags() = (List(matchCount) { true } + List(difficulty.scoredSteps - matchCount) { false }).shuffled(random)
+    fun flags() = (List(matchCount) { true } + List(scoredSteps - matchCount) { false }).shuffled(random)
     val positionFlags = flags()
     val letterFlags = flags()
 
     val positions = mutableListOf<Int>()
     val letters = mutableListOf<Char>()
-    for (i in 0 until n + difficulty.scoredSteps) {
+    for (i in 0 until n + scoredSteps) {
         if (i < n) {
             positions += random.nextInt(9)
             letters += NBACK_LETTERS.random(random)

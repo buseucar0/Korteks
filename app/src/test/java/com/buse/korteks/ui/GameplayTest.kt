@@ -214,6 +214,26 @@ class GameplayTest {
         assertEquals(0, finished.falseAlarms)
     }
 
+    @Test
+    fun `nback - alistirma turu aciklama gosterir ve ilerlemeye kaydedilmez`() {
+        var recorded = 0
+        val vm = NBackViewModel(Random(5))
+        vm.startPractice()
+        start { NBackScreen(onBack = {}, onGameFinished = { recorded++; null }, vm = vm) }
+        val task = vm.task!!
+
+        var sawFeedback = false
+        while (vm.state is NBackUiState.Playing) {
+            val step = task.progress
+            while (task.progress == step) advance(100) // hiçbir şeye basmadan adımı geçir
+            frame()
+            (vm.state as? NBackUiState.Playing)?.lastFeedback?.let { assertText(it); sawFeedback = true }
+        }
+        assertTrue("alıştırmada açıklama görünmeli", sawFeedback)
+        assertEquals(0, recorded)
+        assertText("🎓 ALIŞTIRMA BİTTİ · Hazırsan zorluk seç")
+    }
+
     // ---------------------------------------------------------------- Corsi
 
     /** Dizinin gösterimi bitene kadar bekle: 800 ms başlangıç + blok başına 700 + 250 ms. */

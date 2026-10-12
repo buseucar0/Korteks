@@ -13,6 +13,7 @@ import com.buse.korteks.game.GameType
 import com.buse.korteks.game.LevelInfo
 import com.buse.korteks.game.MatrixDifficulty
 import com.buse.korteks.game.NBackDifficulty
+import com.buse.korteks.game.NBackResponse
 import com.buse.korteks.game.PlayerProgress
 import com.buse.korteks.game.StroopDifficulty
 import com.buse.korteks.game.SymbolDigitDifficulty
@@ -146,4 +147,17 @@ class ScreenPreviewTest {
             streak = 6,
         )
     }
+
+    @Test
+    fun bellekAlistirma() = snap {
+        val vm = NBackViewModel(Random(1)).apply {
+            startPractice()
+            stepEnded(NBackResponse(false, false), 0, 1)
+            stepEnded(NBackResponse(true, false), 0, 2)
+        }
+        NBackScreen(onBack = {}, vm = vm)
+    }
+
+    @Test
+    fun bellekGiris() = snap { NBackScreen(onBack = {}, vm = NBackViewModel()) }
 }

@@ -62,7 +62,8 @@ fun NBackScreen(
         val wasPlaying = vm.state is NBackUiState.Playing
         action()
         val now = vm.state
-        if (wasPlaying && now is NBackUiState.Finished) {
+        // Alıştırma turu kaydedilmez (XP, rekor, günlük antrenman yok)
+        if (wasPlaying && now is NBackUiState.Finished && !now.practice) {
             vm.attachReward(onGameFinished(GameRecord(GameType.NBACK, now.difficulty.name, now.result)))
         }
     }
@@ -83,7 +84,9 @@ fun NBackScreen(
             howTo = "Her adımda ızgarada bir kare, içinde bir harfle yanar. Konum N adım öncekiyle aynıysa " +
                 "KONUM'a, harf N adım öncekiyle aynıysa HARF'e bas. İkisi de aynıysa ikisine de bas, " +
                 "hiçbiri değilse hiçbir şeye basma.",
-            choices = NBackDifficulty.entries.map { d ->
+            choices = listOf(
+                "🎓 Alıştırma  ·  1-Back  ·  ${NBackViewModel.PRACTICE_STEPS + 1} adım  ·  puanlanmaz" to { vm.startPractice() },
+            ) + NBackDifficulty.entries.map { d ->
                 withBest("${d.title}  ·  ${d.n + d.scoredSteps} adım  ·  ${formatSeconds(d.stepMs)} sn/adım", bestScore(d.name)) to { vm.start(d) }
             },
             onBack = onBack,
@@ -93,14 +96,14 @@ fun NBackScreen(
             onStepEnded = { response, firstPressMs, number -> move { vm.stepEnded(response, firstPressMs, number) } },
         )
         is NBackUiState.Finished -> ResultScreen(
-            header = "🧠 BELLEK · ${state.difficulty.title.uppercase()}",
+            header = if (state.practice) "🎓 ALIŞTIRMA BİTTİ · Hazırsan zorluk seç" else "🧠 BELLEK · ${state.difficulty.title.uppercase()}",
             score = state.result.score,
             stats = listOf(
                 "Doğruluk" to "%${state.result.accuracyPercent}",
                 "İsabet" to "${state.hits}/${state.hits + state.misses}",
                 "Yanlış alarm" to "${state.falseAlarms}",
             ),
-            onReplay = { vm.start(state.difficulty) },
+            onReplay = { if (state.practice) vm.startPractice() else vm.start(state.difficulty) },
             onMenu = vm::backToIntro,
             reward = state.reward,
         )
@@ -143,6 +146,16 @@ internal fun NBackPlaying(
             style = MaterialTheme.typography.titleMedium,
             textAlign = TextAlign.Center,
         )
+        if (state.practice && state.lastFeedback != null) {
+            Spacer(Modifier.height(8.dp))
+            Text(
+                state.lastFeedback,
+                style = MaterialTheme.typography.bodyLarge,
+                fontWeight = FontWeight.Bold,
+                textAlign = TextAlign.Center,
+                color = if (state.lastFeedback.startsWith("✓")) Color(0xFF66BB6A) else Color(0xFFFFB300),
+            )
+        }
 
         // Izgara: kalan alana sığan en büyük kare (yatay tablette butonların üstüne taşmasın)
         Box(Modifier.weight(1f).fillMaxWidth(0.85f).padding(vertical = 12.dp), contentAlignment = Alignment.Center) {
